@@ -1,8 +1,9 @@
 # Document Reader — Design
 
 - **Date:** 2026-11-20
-- **Status:** Approved. Revised the same day so that every request is a batch. Design only: no feature code and no
-  OpenSpec specs yet.
+- **Status:** Approved. Revised the same day so that every request is a batch, and again to scope it as a proof of
+  concept. Design only: no feature code and no OpenSpec specs yet.
+- **Scope:** Proof of concept. It is never used live and never sees real production data (§2a).
 - **Service:** `document-reader` (`com.bnaqica.documentreader`, port 8084, PostgreSQL, integration schema)
 
 Decisions are tagged so they can be checked:
@@ -46,6 +47,15 @@ single call.
 - Keep the set of document types stable. Near-duplicate names map to the first type saved, and the model may add
   genuinely new types. **[decided]**
 
+**2a. Proof-of-concept scope** **[decided]**
+- The service runs only on synthetic or sample documents, never on real borrower data.
+- Compliance with OpenAI (data handling and retention agreements) is worked out later, before any real data is used.
+- Webhooks have no security for now: no signing, and no restrictions on the URL beyond it being a valid http or
+  https address.
+- Data returned to API consumers is encrypted in transit by HTTPS, with no separate payload encryption (§18).
+
+Anything listed under §22 must be revisited before the service moves beyond a proof of concept.
+
 **Non-goals (v1)**
 - Using the loan purpose for a required-documents checklist or a "what's missing" report. The purpose is context
   only. **[decided]**
@@ -60,7 +70,7 @@ single call.
 - Type sprawl: the catalog filling up with "Paystub", "Pay stubs" and "Pay-stub" as separate types.
 - Lost work: a batch that was accepted but never finished, or a webhook that silently never arrives.
 - Leaking borrower data: extracted SSNs, account numbers or document bytes ending up in logs, the audit table,
-  another caller's response or an attacker-controlled webhook URL.
+  or another caller's response. This matters most once real data arrives, but the cheap guards apply from the start.
 - Processing a step twice for one message because of a retry or a second instance.
 
 ## 3. Constraints
@@ -128,7 +138,7 @@ Process 3 — EXTRACT_DOCUMENT (one per document, run in parallel)
       complete the batch + NOTIFY batch_completed + outbox DELIVER_WEBHOOK if async
 
 Process 4 — DELIVER_WEBHOOK
-  one signed POST of the batch result to webhookUrl, retried with backoff
+  one POST of the batch result to webhookUrl (unsigned for the proof of concept), retried with backoff
 ```
 
 The user decided on separation first, then classification, then extraction, with one batch result and one webhook
@@ -162,8 +172,8 @@ failing file by its index and file name, in an `errors` array. The responses:
 - A missing or unknown `loanPurpose` returns **400**, and the message lists the valid codes. **[decided: required]**
 - `async=true` with no `webhookUrl` returns **400**, "webhookUrl is required when async is true". **[decided]**
 - A `webhookUrl` with `async` false or missing returns **400**, "webhookUrl is only used when async is true". **[proposed]**
-- A `webhookUrl` that is not https, or that resolves to a private, loopback or link-local address, returns **400**.
-  The `local` profile allows http and localhost. **[proposed]**
+- A `webhookUrl` that is not an absolute http or https URL returns **400**, "webhookUrl must be an absolute http or
+  https URL". There are no other restrictions on the URL for the proof of concept. **[decided: no webhook security]**
 - No files, or more than `batch.max-files`, returns **400**.
 - An unsupported type returns **415**. A file over 50 MB, or a batch over 200 MB, returns **413**. A file that is
   unreadable (corrupt or password-protected), or over 100 pages, returns **422**. **[proposed]**
@@ -414,17 +424,15 @@ virtual threads suit them well.
 - **[builder]** chooses between a virtual-thread blocking wait and `DeferredResult`; the behaviour must be the same
   either way.
 
-## 15. Webhook delivery (process 4) **[decided: one per batch]** **[proposed: mechanism]**
+## 15. Webhook delivery (process 4) **[decided: one per batch, no security for now]** **[proposed: mechanism]**
 
 - One webhook is sent per batch. It is a POST of the batch result (section 7.3) as JSON to `webhookUrl`, for every
   final status.
-- Headers: `X-Document-Reader-Batch` (batch id), `X-Document-Reader-Delivery` (inbox message id, for the receiver's
-  de-duplication), `X-Document-Reader-Timestamp`, and `X-Document-Reader-Signature`, an HMAC-SHA256 of
-  `timestamp + "." + body` using one shared secret from configuration. A secret per caller is deferred.
+- Headers: `X-Document-Reader-Batch` (batch id) and `X-Document-Reader-Delivery` (inbox message id, for the
+  receiver's de-duplication). There is no signature and no shared secret in the proof of concept (§22).
 - Any 2xx response is success. Anything else, or a timeout (10 s), retries through the inbox backoff, with
   `webhook.max-attempts` defaulting to 8. Every attempt is recorded in `webhook_delivery_attempt`.
-- The SSRF check runs again just before each send, because DNS can change between intake and delivery. Redirects
-  are not followed.
+- Redirects are not followed, so a 3xx response counts as a failed attempt and is retried.
 - After the final failed attempt, the batch keeps its result and records the webhook status as `FAILED`. The caller
   can still fetch the result with `GET`.
 
@@ -475,7 +483,7 @@ form fields and each file's metadata (name, type, size, sha256), never the file 
 | `wait.timeout` / `wait.poll-interval` | 300s / 2s |
 | `outbox.poll-interval` | 1s |
 | `inbox.max-attempts` / `inbox.backoff-initial` / `inbox.backoff-max` / `inbox.lease` | 5 / 10s / 10m / 10m |
-| `webhook.max-attempts` / `webhook.timeout` / `webhook.secret` | 8 / 10s / env `WEBHOOK_SECRET` |
+| `webhook.max-attempts` / `webhook.timeout` | 8 / 10s |
 | `s3.bucket` / `s3.prefix` | env `S3_BUCKET` / `files/` |
 
 Spring's multipart limits (`spring.servlet.multipart.max-file-size` and `max-request-size`) are set to match
@@ -484,9 +492,17 @@ Spring's multipart limits (`spring.servlet.multipart.max-file-size` and `max-req
 The OpenAI key comes from env `OPENAI_API_KEY`. AWS credentials come from the default provider chain. Locally,
 both point at the `local-docker` LocalStack.
 
-## 18. Security and privacy **[proposed]**
+## 18. Security and privacy
 
-- Every endpoint needs a Keycloak JWT except health, per the template.
+Even with only synthetic data, the proof of concept keeps the cheap protections below, so they don't have to be
+added later. **[proposed]**
+
+- **Encrypted in transit.** **[decided]** API responses go to consumers only over HTTPS (TLS 1.2 or later). In
+  deployed environments, TLS ends at the ingress or load balancer in front of the service. The `local` profile
+  serves plain http on localhost. **[proposed: where TLS ends]**
+  HTTPS is all the encryption needed; the response body itself is not encrypted separately. **[decided]**
+- Every endpoint needs a Keycloak JWT except health, per the template. Callers are identified by the token subject,
+  and the admin role is named `ADMIN`. **[proposed]**
 - A caller can read only its own batches (`requested_by` must equal the token subject). An admin role can read all
   of them.
 - S3 objects are private and use SSE-KMS. Downloads are never exposed. Page images stay internal.
@@ -510,7 +526,7 @@ both point at the `local-docker` LocalStack.
 ## 20. Testing
 
 - **Unit:** the normalization keys (the Paystub / Pay stubs cases), the boundary vote, the type vote and tie-break
-  outcomes, backoff maths, the SSRF check and the HMAC signature.
+  outcomes, the webhook URL format check, and backoff maths.
 - **Integration:** Postgres through Testcontainers and S3 through `testcontainers-localstack`. OpenAI is replaced with
   a stub `ChatModel` that returns scripted answers. That makes it possible to script split points, ties,
   disagreements, failures and new types.
@@ -521,7 +537,7 @@ both point at the `local-docker` LocalStack.
   - the batch doesn't complete while one file is still separating;
   - one failed file or document gives `PARTIALLY_COMPLETED`;
   - the wait mode completes when another worker does the processing.
-- **Golden documents:** a small set of redacted real samples per common type, plus a few multi-document packets and
+- **Golden documents:** a small set of synthetic or sample documents per common type (never real borrower data), plus a few multi-document packets and
   multi-file batches. This suite runs on demand against the real OpenAI and stays out of CI, to measure separation
   and classification accuracy and cost before tuning the run counts.
 
@@ -533,8 +549,18 @@ blocking-wait mechanism. The wording of `ProblemDetail` messages.
 
 ## 22. Deferred decisions
 
+These must be settled before the service handles real data:
+
+- Compliance with OpenAI for borrower data (an enterprise agreement, zero data retention, region).
+- Webhook security: signing each webhook (HMAC with a secret per caller), and checking webhook URLs against private
+  and internal addresses (SSRF protection).
+- A shared limit on OpenAI requests across instances, to stay within rate limits under load. The proof of concept
+  only caps parallel calls per instance.
+- How callers map to Keycloak (people or systems, and the real admin role name).
+
+These can wait:
+
 - A retention and deletion policy for files, pages and extracted data.
 - Returning an earlier result when the same file (same sha256) is uploaded again. The `sha256` column is already
   stored so this can be added later.
-- Webhook signing secrets per caller.
 - Using the loan purpose for required-document checklists.

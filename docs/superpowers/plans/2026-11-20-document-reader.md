@@ -18,6 +18,10 @@ in on the batch row. OpenAI calls run outside transactions, through a `VisionCli
 
 **Spec:** `docs/design/2026-11-20-document-reader-design.md`. Section numbers below (§n) refer to it.
 
+**Execution:** build this plan through the work items in `docs/workitems/`, one at a time, with one commit each.
+They carry these tasks in a dependency-safe order: tasks 2 and 3 are combined into WI-02, and batch completion
+moves out of task 14 into WI-10, ahead of tasks 12 and 13, which call it.
+
 ## Global Constraints
 
 - Base package `com.bnaqica.documentreader`; follow `.claude/rules/` (package layout, CRUD versus action services, no logic in controllers, listeners or clients, mapping with `@Builder`).
@@ -30,6 +34,7 @@ in on the batch row. OpenAI calls run outside transactions, through a `VisionCli
 - All configuration sits under `app.document-reader.*` with the defaults in §17.
 - Tests use Testcontainers Postgres (and LocalStack for S3). OpenAI is always a stub `ChatModel` in CI.
 - Terms (§5): a **batch** is one request, a **source file** is one uploaded file, and a **document** is one logical document inside a file. One payload per document.
+- **Proof of concept** (§2a): synthetic or sample data only, and no webhook security. Do not build signing, secrets or SSRF checks; those are deferred (§22).
 - **Never commit.** The repo's hook blocks commits and the developer reviews every file. Each task ends with `./gradlew spotlessApply build` passing, and the work is left uncommitted.
 
 ## Review Focus
@@ -51,7 +56,7 @@ in on the batch row. OpenAI calls run outside transactions, through a `VisionCli
 | Core records | `entity/Batch`, `BatchStatus`, `WebhookStatus`, `SourceFile`, `SourceFileStatus`, `SourceFilePage`, `Document`, `DocumentStatus`; CRUD services and controllers |
 | Run records | `entity/SeparationRun`, `ClassificationRun`, `ClassificationRound`, `ClassificationResult`, `DecidedBy`, `ExtractionRun`, `ExtractionStage`, `ExtractionResult`, `WebhookDeliveryAttempt`, `OpenAiCall` (integration schema); CRUD services and controllers |
 | Messaging | `entity/OutboxMessage`, `InboxMessage`, `MessageType`, `InboxStatus`; `publisher/OutboxPublisher`; `processors/OutboxDispatcher`; `listener/InboxWorker`; `service/InboxMessageHandler` (interface); `listener/PgNotificationListener`; `service/CompletionWaitService(Impl)` |
-| Processing | `processors/TypeNameNormalizer`, `ImageConversionProcessor`, `ContentTypeDetector`, `BoundaryVoteProcessor`, `TypeVoteProcessor`, `DataSchemaValidator`, `WebhookSigner`, `WebhookUrlValidator` |
+| Processing | `processors/TypeNameNormalizer`, `ImageConversionProcessor`, `ContentTypeDetector`, `BoundaryVoteProcessor`, `TypeVoteProcessor`, `DataSchemaValidator`, `WebhookUrlValidator` |
 | Clients | `client/VisionClient` (+ `config/SpringAiVisionClient` wiring), `client/DocumentStorageClient` (+ S3 implementation in `config`), `client/WebhookClient` |
 | Actions | `service/BatchIntakeService(Impl)`, `SeparationService(Impl)`, `ClassificationService(Impl)`, `DocumentTypeCatalogService(Impl)`, `ExtractionService(Impl)`, `BatchCompletionService(Impl)`, `WebhookDeliveryService(Impl)`, `BatchQueryService(Impl)` |
 | API | `api/BatchController`, `dto/request/BatchUploadRequest`, `dto/response/BatchResultResponse`, `FileResultResponse`, `DocumentResultResponse`, `BatchAcceptedResponse` |
@@ -69,11 +74,11 @@ Tests mirror these packages under `src/test/java/com/bnaqica/documentreader/`.
 - Test: `config/DocumentReaderPropertiesTests.java`
 
 **Interfaces:**
-- Produces: `DocumentReaderProperties` record with nested records `Batch(maxFiles, maxTotalSize)`, `File(maxSize, maxPages)`, `Conversion(dpi, maxDimension)`, `Separation(runs, windowSize, windowOverlap)`, `Classification(runs, tiebreakRuns, maxPages, parallelism, minSuccessfulRuns)`, `Extraction(passes, maxPages)`, `OpenAi(model, separationTemperature, classificationTemperature, extractionTemperature)`, `Wait(timeout, pollInterval)`, `Outbox(pollInterval)`, `Inbox(maxAttempts, backoffInitial, backoffMax, lease)`, `Webhook(maxAttempts, timeout, secret, allowInsecure)`, `S3(bucket, prefix)`. Durations use `Duration` and sizes use `DataSize`.
+- Produces: `DocumentReaderProperties` record with nested records `Batch(maxFiles, maxTotalSize)`, `File(maxSize, maxPages)`, `Conversion(dpi, maxDimension)`, `Separation(runs, windowSize, windowOverlap)`, `Classification(runs, tiebreakRuns, maxPages, parallelism, minSuccessfulRuns)`, `Extraction(passes, maxPages)`, `OpenAi(model, separationTemperature, classificationTemperature, extractionTemperature)`, `Wait(timeout, pollInterval)`, `Outbox(pollInterval)`, `Inbox(maxAttempts, backoffInitial, backoffMax, lease)`, `Webhook(maxAttempts, timeout)`, `S3(bucket, prefix)`. Durations use `Duration` and sizes use `DataSize`.
 
 - [ ] **Step 1: Write the failing test.** `bindsDefaults()` loads the context and asserts every default from §17, including: `batch = 20 / 200MB`, `file = 50MB / 100`, `conversion = 200 / 2048`, `separation = 3 / 15 / 2`, `classification = 5 / 3 / 3 / 5`, `minSuccessfulRuns = 3`, `extraction = 3 / 20`, `wait = 300s / 2s`, `outbox.pollInterval = 1s`, `inbox = 5 / 10s / 10m / 10m`, `webhook = 8 / 10s`, `s3.prefix = "files/"`. `multipartLimitsMatchProperties()` asserts that `spring.servlet.multipart.max-file-size = 50MB` and `max-request-size = 200MB`. `rejectsEvenSeparationRuns()` and `rejectsEvenTiebreakRuns()` set a value of 4 and expect the context to fail to start.
 - [ ] **Step 2: Run** `./gradlew test --tests '*DocumentReaderPropertiesTests'`. Expected: FAIL, the class does not exist.
-- [ ] **Step 3: Add dependencies and properties.** Add the Spring AI BOM with the OpenAI starter, the AWS SDK v2 BOM with `s3`, `pdfbox`, TwelveMonkeys `imageio-tiff` and `imageio-webp`, `tika-core`, a JSON Schema validator, and test-only `testcontainers-localstack`, with a "not in Boot BOM" comment on each. Turn on `spring.threads.virtual.enabled: true`. Set the multipart limits. Add `DocumentReaderProperties` with `@Validated` and a constraint for odd run counts. Set `OPENAI_API_KEY`, `S3_BUCKET` and `WEBHOOK_SECRET` from the environment, with placeholders in the test config. In the local profile, set `webhook.allowInsecure = true` and point S3 at LocalStack: add the `localstack` service to `compose.yaml`, or document `local-docker/localstack`.
+- [ ] **Step 3: Add dependencies and properties.** Add the Spring AI BOM with the OpenAI starter, the AWS SDK v2 BOM with `s3`, `pdfbox`, TwelveMonkeys `imageio-tiff` and `imageio-webp`, `tika-core`, a JSON Schema validator, and test-only `testcontainers-localstack`, with a "not in Boot BOM" comment on each. Turn on `spring.threads.virtual.enabled: true`. Set the multipart limits. Add `DocumentReaderProperties` with `@Validated` and a constraint for odd run counts. Set `OPENAI_API_KEY` and `S3_BUCKET` from the environment, with placeholders in the test config. In the local profile, point S3 at LocalStack: add the `localstack` service to `compose.yaml`, or document `local-docker/localstack`.
 - [ ] **Step 4: Run** the test again. Expected: PASS. Then run `./gradlew spotlessApply build`. Expected: BUILD SUCCESSFUL.
 
 ### Task 2: Type-name normalizer
@@ -357,7 +362,8 @@ Tests mirror these packages under `src/test/java/com/bnaqica/documentreader/`.
   - `noFilesIs400()` and `twentyOneFilesIs400()`
   - `asyncTrueWithoutUrlIs400()`, with the detail exactly "webhookUrl is required when async is true"
   - `urlWithoutAsyncIs400()`, with the detail exactly "webhookUrl is only used when async is true"
-  - `httpWebhookIs400()`, `privateIpWebhookIs400()` (for `10.0.0.5`, `127.0.0.1`, `169.254.169.254`, `[::1]` and a hostname resolving to `192.168.1.2`) and `localProfileAllowsHttpLocalhost()`
+  - `relativeWebhookUrlIs400()` and `ftpWebhookUrlIs400()`, with the detail exactly "webhookUrl must be an absolute http or https URL"
+  - `httpAndHttpsWebhookUrlsAreAccepted()`, including `http://localhost:9000/hook`
   - `docxIs415NamingTheFile()`: the `errors` entry has the index and file name.
   - `fileOver50MbIs413()`, `batchOver200MbIs413()` and `fileOver100PagesIs422()`
   - Review Focus #1: `oneEncryptedPdfAmongValidFilesIs422AndStoresNothing()`. The batch, file and outbox counts are unchanged, and S3 is empty.
@@ -376,7 +382,7 @@ Tests mirror these packages under `src/test/java/com/bnaqica/documentreader/`.
   5. transaction 2: `markStored` for each file, set the batch to `PROCESSING`, and publish one `SEPARATE_FILE` per file;
   6. if the request is not async, call `await(batchId, wait.timeout)`.
 
-  For the webhook check, resolve every A and AAAA record and reject loopback, site-local, link-local, unique-local and multicast addresses.
+  The webhook check only confirms an absolute URL with an `http` or `https` scheme (§7.1). It does no DNS lookups.
 - [ ] **Step 4: Run** the tests and the build. Expected: PASS.
 
 ### Task 12: Separation (process 1, per file)
@@ -482,22 +488,18 @@ Tests mirror these packages under `src/test/java/com/bnaqica/documentreader/`.
 ### Task 15: Webhook delivery (process 4)
 
 **Files:**
-- Create: `client/WebhookClient`, `config/WebhookClientConfig`, `processors/WebhookSigner`, `service/WebhookDeliveryService(Impl)`, `service/handler/DeliverWebhookHandler`
-- Test: `processors/WebhookSignerTests`, `service/WebhookDeliveryServiceTests` (with a local HTTP server stub)
+- Create: `client/WebhookClient`, `config/WebhookClientConfig`, `service/WebhookDeliveryService(Impl)`, `service/handler/DeliverWebhookHandler`
+- Test: `service/WebhookDeliveryServiceTests` (with a local HTTP server stub)
 
 **Interfaces:**
-- Consumes: Tasks 4, 5, 6, 11 (`BatchQueryService`, `WebhookUrlValidator`) and 14.
-- Produces:
-  - `WebhookSigner.sign(String timestamp, String body) → String`: lowercase hex HMAC-SHA256 of `timestamp + "." + body`.
-  - `WebhookDeliveryService.deliver(UUID batchId, UUID deliveryId)`
+- Consumes: Tasks 4, 5, 6, 11 (`BatchQueryService`) and 14.
+- Produces: `WebhookDeliveryService.deliver(UUID batchId, UUID deliveryId)`. There is no signing in the proof of concept (§15).
 
 - [ ] **Step 1: Write the failing tests.**
-  - `signatureMatchesKnownVector()`: fixed secret, timestamp and body against an expected hex value computed once with `openssl dgst -sha256 -hmac`.
-  - `postsBatchEnvelopeWithFourHeaders()`: `X-Document-Reader-Batch`, `-Delivery`, `-Timestamp` and `-Signature`, with a body containing every document payload.
+  - `postsBatchEnvelopeWithTwoHeaders()`: `X-Document-Reader-Batch` and `X-Document-Reader-Delivery`, and no signature header, with a body containing every document payload.
   - `2xxMarksDelivered()`
   - `500SchedulesRetry()` and `timeoutAfter10sSchedulesRetry()`
   - `redirectIsNotFollowedAndCountsAsFailure()`
-  - `urlRevalidatedBeforeSend()`: a hostname now resolving to a private IP fails without a request being sent.
   - `everyAttemptRecorded()`
   - `exhaustedMarksWebhookFailedButKeepsResult()`: `webhookStatus=FAILED`, the batch status is unchanged, and `GET` still returns the result.
 - [ ] **Step 2: Run** the tests. Expected: FAIL.
@@ -521,10 +523,10 @@ Tests mirror these packages under `src/test/java/com/bnaqica/documentreader/`.
     - Driver's license (file 1, page 1)
 
     Each has `data` that validates against its schema and a non-empty `summary`. `files[]` shows document counts of 3 and 1.
-  - `asyncBatchDeliversOneSignedWebhook()`: exactly one webhook, containing all four payloads.
+  - `asyncBatchDeliversOneWebhook()`: exactly one webhook, containing all four payloads.
   - `twoAppInstancesShareWorkWithoutDuplicates()`: two Spring contexts on one database and 10 batches give exactly 10 completed batches and no duplicate run rows.
   - `instanceKilledMidExtractionIsRecovered()`: the lease expires and a second instance finishes.
-  - `goldenSuite()` runs only when `OPENAI_API_KEY` is set and the `golden` tag is selected. It prints per-type accuracy, separation accuracy, and per-batch token totals from `openai_call`.
+  - `goldenSuite()` runs only when `OPENAI_API_KEY` is set and the `golden` tag is selected. It runs on synthetic or sample documents only, and prints per-type accuracy, separation accuracy, and per-batch token totals from `openai_call`.
 - [ ] **Step 2: Run** `./gradlew test --tests '*PipelineEndToEndTests'`. Expected: FAIL.
 - [ ] **Step 3: Fix any integration gaps** the end-to-end tests expose, in the task that owns the code.
 - [ ] **Step 4: Run** `./gradlew spotlessApply build`. Expected: BUILD SUCCESSFUL, with the JaCoCo report produced. Run `./gradlew goldenTest` manually with a real key before tuning the run counts.
