@@ -517,7 +517,7 @@ added later. **[proposed]**
 | `service` | Action services: `BatchIntakeService`, `SeparationService`, `ClassificationService`, `ExtractionService`, `BatchCompletionService`, `DocumentTypeCatalogService`, `WebhookDeliveryService`, `CompletionWaitService`, `BatchQueryService`. Each sits on CRUD services (`BatchService`, `SourceFileService`, `DocumentService`, `DocumentTypeService`, `LoanPurposeService`, `InboxMessageService` and the rest), which own their repositories |
 | `processors` | `ImageConversionProcessor` (PDF, HEIC, TIFF → PNG), `BoundaryVoteProcessor`, `TypeVoteProcessor`, `TypeNameNormalizer` |
 | `publisher` | `OutboxPublisher` (writes outbox rows and notifies) |
-| `listener` | `PgNotificationListener` (passes `LISTEN` events to services), `InboxWorker` (claims and passes messages to the matching service) |
+| `listener` | `PgNotificationListener` and `InboxWorker`. They follow `listener -> @Service to CRUD @Service interface -> ...` and hold no logic: the notification listener passes events to `WorkerSignalService` and `CompletionWaitService`, and the worker waits for a signal, then calls `InboxProcessingService`, which claims messages and calls the step's action service |
 | `client` | `VisionClient` (the contract over the Spring AI `ChatClient`), `DocumentStorageClient` (the contract over S3), `WebhookClient` |
 | `config` | `@ConfigurationProperties`, `ChatClient`, `S3Client`, executor and listener-connection beans |
 | `dto.request` / `dto.response` / `dto.event` | Upload form, batch result envelope, and inbox message payloads |

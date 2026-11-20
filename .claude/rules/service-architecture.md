@@ -10,7 +10,7 @@ paths:
 ```
 CRUD:     @RestController -> CRUD @Service interface -> CRUD implementation -> @Repository -> DB
 Action:   @RestController -> action @Service -> CRUD @Service interface -> ...
-Listener: listener -> @Service
+Listener: listener -> @Service to CRUD @Service interface -> ...
 ```
 
 - Every database table (or MongoDB collection) has a CRUD `@RestController` in `api`.

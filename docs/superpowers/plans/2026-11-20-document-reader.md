@@ -33,6 +33,7 @@ moves out of task 14 into WI-10, ahead of tasks 12 and 13, which call it.
 - Logs carry ids, statuses and counts only. Never log extracted values, summaries, file names or webhook bodies (§18).
 - All configuration sits under `app.document-reader.*` with the defaults in §17.
 - Tests use Testcontainers Postgres (and LocalStack for S3). OpenAI is always a stub `ChatModel` in CI.
+- Listeners follow `listener -> @Service to CRUD @Service interface -> ...` (`.claude/rules/service-architecture.md`). `InboxWorker` and `PgNotificationListener` only hand work to services. The inbox logic lives in `InboxProcessingService`, wake-ups go through `WorkerSignalService`, and each step's action service implements `InboxMessageHandler` itself. `docs/workitems/` has the full detail.
 - Terms (§5): a **batch** is one request, a **source file** is one uploaded file, and a **document** is one logical document inside a file. One payload per document.
 - **Proof of concept** (§2a): synthetic or sample data only, and no webhook security. Do not build signing, secrets or SSRF checks; those are deferred (§22).
 - **Never commit.** The repo's hook blocks commits and the developer reviews every file. Each task ends with `./gradlew spotlessApply build` passing, and the work is left uncommitted.
@@ -55,7 +56,7 @@ moves out of task 14 into WI-10, ahead of tasks 12 and 13, which call it.
 | Reference data | `entity/LoanPurpose.java`, `entity/DocumentType.java`, `entity/DocumentTypeAlias.java`, `entity/DocumentTypeOrigin.java`, repositories, `service/LoanPurposeService(Impl).java`, `service/DocumentTypeService(Impl).java`, `api/LoanPurposeController.java`, `api/DocumentTypeController.java` |
 | Core records | `entity/Batch`, `BatchStatus`, `WebhookStatus`, `SourceFile`, `SourceFileStatus`, `SourceFilePage`, `Document`, `DocumentStatus`; CRUD services and controllers |
 | Run records | `entity/SeparationRun`, `ClassificationRun`, `ClassificationRound`, `ClassificationResult`, `DecidedBy`, `ExtractionRun`, `ExtractionStage`, `ExtractionResult`, `WebhookDeliveryAttempt`, `OpenAiCall` (integration schema); CRUD services and controllers |
-| Messaging | `entity/OutboxMessage`, `InboxMessage`, `MessageType`, `InboxStatus`; `publisher/OutboxPublisher`; `processors/OutboxDispatcher`; `listener/InboxWorker`; `service/InboxMessageHandler` (interface); `listener/PgNotificationListener`; `service/CompletionWaitService(Impl)` |
+| Messaging | `entity/OutboxMessage`, `InboxMessage`, `MessageType`, `InboxStatus`; `publisher/OutboxPublisher`; `processors/OutboxDispatcher`; `listener/InboxWorker`; `service/InboxMessageHandler` (interface); `service/InboxProcessingService(Impl)`; `service/WorkerSignalService(Impl)`; `listener/PgNotificationListener`; `service/CompletionWaitService(Impl)` |
 | Processing | `processors/TypeNameNormalizer`, `ImageConversionProcessor`, `ContentTypeDetector`, `BoundaryVoteProcessor`, `TypeVoteProcessor`, `DataSchemaValidator`, `WebhookUrlValidator` |
 | Clients | `client/VisionClient` (+ `config/SpringAiVisionClient` wiring), `client/DocumentStorageClient` (+ S3 implementation in `config`), `client/WebhookClient` |
 | Actions | `service/BatchIntakeService(Impl)`, `SeparationService(Impl)`, `ClassificationService(Impl)`, `DocumentTypeCatalogService(Impl)`, `ExtractionService(Impl)`, `BatchCompletionService(Impl)`, `WebhookDeliveryService(Impl)`, `BatchQueryService(Impl)` |
@@ -243,7 +244,7 @@ Tests mirror these packages under `src/test/java/com/bnaqica/documentreader/`.
 - Test: `listener/PgNotificationListenerTests`, `service/CompletionWaitServiceTests`
 
 **Interfaces:**
-- Consumes: `BatchService.get` (Task 4) and `InboxWorker.wake(MessageType)` (Task 6).
+- Consumes: `BatchService.get` (Task 4), and `WorkerSignalService.signal` and `signalDispatcher` (Task 6).
 - Produces:
   - `CompletionWaitService.await(UUID batchId, Duration timeout) → boolean`: true when the batch reached a final status.
   - `void notifyBatchCompleted(UUID batchId)`: sends `NOTIFY batch_completed`, and must be called inside the completing transaction.
@@ -388,7 +389,7 @@ Tests mirror these packages under `src/test/java/com/bnaqica/documentreader/`.
 ### Task 12: Separation (process 1, per file)
 
 **Files:**
-- Create: `service/SeparationService(Impl)`, `processors/BoundaryVoteProcessor`, `service/handler/SeparateFileHandler` (an `InboxMessageHandler`)
+- Create: `service/SeparationService(Impl)`, `processors/BoundaryVoteProcessor`
 - Test: `processors/BoundaryVoteProcessorTests`, `service/SeparationServiceTests`
 
 **Interfaces:**
@@ -419,7 +420,7 @@ Tests mirror these packages under `src/test/java/com/bnaqica/documentreader/`.
 ### Task 13: Catalog resolution and classification (process 2)
 
 **Files:**
-- Create: `processors/TypeVoteProcessor`, `service/DocumentTypeCatalogService(Impl)`, `service/ClassificationService(Impl)`, `service/handler/ClassifyDocumentHandler`
+- Create: `processors/TypeVoteProcessor`, `service/DocumentTypeCatalogService(Impl)`, `service/ClassificationService(Impl)`
 - Test: `processors/TypeVoteProcessorTests`, `service/DocumentTypeCatalogServiceTests`, `service/ClassificationServiceTests`
 
 **Interfaces:**
@@ -453,7 +454,7 @@ Tests mirror these packages under `src/test/java/com/bnaqica/documentreader/`.
 ### Task 14: Extraction (process 3) and batch completion
 
 **Files:**
-- Create: `processors/DataSchemaValidator`, `service/ExtractionService(Impl)`, `service/BatchCompletionService(Impl)`, `service/handler/ExtractDocumentHandler`
+- Create: `processors/DataSchemaValidator`, `service/ExtractionService(Impl)`, `service/BatchCompletionService(Impl)`
 - Test: `processors/DataSchemaValidatorTests`, `service/ExtractionServiceTests`, `service/BatchCompletionServiceTests`
 
 **Interfaces:**
@@ -488,7 +489,7 @@ Tests mirror these packages under `src/test/java/com/bnaqica/documentreader/`.
 ### Task 15: Webhook delivery (process 4)
 
 **Files:**
-- Create: `client/WebhookClient`, `config/WebhookClientConfig`, `service/WebhookDeliveryService(Impl)`, `service/handler/DeliverWebhookHandler`
+- Create: `client/WebhookClient`, `config/WebhookClientConfig`, `service/WebhookDeliveryService(Impl)`
 - Test: `service/WebhookDeliveryServiceTests` (with a local HTTP server stub)
 
 **Interfaces:**

@@ -15,7 +15,7 @@ Work on this item alone, and don't start the next one until this one is committe
 ---
 
 **Files:**
-- Create: `processors/DataSchemaValidator`, `service/ExtractionService(Impl)`, `service/handler/ExtractDocumentHandler`
+- Create: `processors/DataSchemaValidator`, `service/ExtractionService(Impl)`
 - Test: `processors/DataSchemaValidatorTests`, `service/ExtractionServiceTests`
 
 **Interfaces:**
@@ -23,6 +23,8 @@ Work on this item alone, and don't start the next one until this one is committe
 - Produces:
   - `DataSchemaValidator.validate(JsonNode schema, JsonNode data) → List<String>`: error messages, empty when valid.
   - `ExtractionService.extract(UUID documentId)`
+
+The service implementation also implements `InboxMessageHandler` (WI-05) for its message type: `handle` calls the step, and `onExhausted` runs the failure path. Listeners follow `listener -> @Service to CRUD @Service interface -> ...` (`.claude/rules/service-architecture.md`): the inbox listener calls `InboxProcessingService`, which calls this service, which changes data only through CRUD services.
 
 - [ ] **Step 1: Write the failing tests.**
   - `completedDocumentRunsCompletionCheck()`: after the final stage, `BatchCompletionService.onDocumentFinished` is called once, inside the same transaction that saves the result.

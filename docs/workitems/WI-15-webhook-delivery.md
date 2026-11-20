@@ -15,12 +15,14 @@ Work on this item alone, and don't start the next one until this one is committe
 ---
 
 **Files:**
-- Create: `client/WebhookClient`, `config/WebhookClientConfig`, `service/WebhookDeliveryService(Impl)`, `service/handler/DeliverWebhookHandler`
+- Create: `client/WebhookClient`, `config/WebhookClientConfig`, `service/WebhookDeliveryService(Impl)`
 - Test: `service/WebhookDeliveryServiceTests` (with a local HTTP server stub)
 
 **Interfaces:**
 - Consumes: Work items WI-03, WI-04, WI-05 and WI-10, and `BatchQueryService` (WI-11).
 - Produces: `WebhookDeliveryService.deliver(UUID batchId, UUID deliveryId)`. There is no signing in the proof of concept (§15).
+
+The service implementation also implements `InboxMessageHandler` (WI-05) for its message type: `handle` calls the step, and `onExhausted` runs the failure path. Listeners follow `listener -> @Service to CRUD @Service interface -> ...` (`.claude/rules/service-architecture.md`): the inbox listener calls `InboxProcessingService`, which calls this service, which changes data only through CRUD services.
 
 - [ ] **Step 1: Write the failing tests.**
   - `postsBatchEnvelopeWithTwoHeaders()`: `X-Document-Reader-Batch` and `X-Document-Reader-Delivery`, and no signature header, with a body containing every document payload.

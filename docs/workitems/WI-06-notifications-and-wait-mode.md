@@ -19,11 +19,12 @@ Work on this item alone, and don't start the next one until this one is committe
 - Test: `listener/PgNotificationListenerTests`, `service/CompletionWaitServiceTests`
 
 **Interfaces:**
-- Consumes: `BatchService.get` (WI-03) and `InboxWorker.wake(MessageType)` (WI-05).
+- Consumes: `BatchService.get` (WI-03), and `WorkerSignalService.signal` and `signalDispatcher` (WI-05).
 - Produces:
   - `CompletionWaitService.await(UUID batchId, Duration timeout) → boolean`: true when the batch reached a final status.
   - `void notifyBatchCompleted(UUID batchId)`: sends `NOTIFY batch_completed`, and must be called inside the completing transaction.
-  - `PgNotificationListener` listens on the `outbox_ready`, `inbox_ready` and `batch_completed` channels using one dedicated connection that reconnects with backoff.
+  - `PgNotificationListener` listens on the `outbox_ready`, `inbox_ready` and `batch_completed` channels using one dedicated connection that reconnects with backoff. It only passes each notification to a service: `outbox_ready` → `WorkerSignalService.signalDispatcher()`, `inbox_ready` → `WorkerSignalService.signal(type)`, and `batch_completed` → `CompletionWaitService.onBatchCompleted(batchId)`.
+  - `CompletionWaitService.onBatchCompleted(UUID batchId)`: completes the matching waiter, if any.
 
 - [ ] **Step 1: Write the failing tests.**
   - `awaitReturnsWhenNotified()`: a notification is sent from another connection, and `await` returns true in under 1 s.
@@ -31,6 +32,7 @@ Work on this item alone, and don't start the next one until this one is committe
   - `awaitTimesOut()`: returns false after the timeout, set to 3 s for the test.
   - Review Focus #4: `waiterRemovedWhenCallerInterrupted()`. The waiting thread is interrupted, the registry size returns to 0, processing is not affected, and no ERROR log is written.
   - `listenerReconnectsAfterConnectionDrop()`
+  - `listenerOnlyDelegates()`: each channel's notification results in exactly one call to the matching service method, and the listener never calls `InboxWorker` or any other listener.
 - [ ] **Step 2: Run** the tests. Expected: FAIL.
 - [ ] **Step 3: Implement** using the PgJDBC `PGConnection.getNotifications(timeoutMs)` loop on a virtual thread, and a `ConcurrentHashMap<UUID, CompletableFuture<Void>>` registry. `await` completes on whichever comes first: the future, or a status poll every `wait.pollInterval`.
 - [ ] **Step 4: Run** the tests and the build. Expected: PASS.

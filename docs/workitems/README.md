@@ -22,6 +22,8 @@ The work items carry the plan's tasks, with two changes:
 
 Claude never commits in this repo; `.claude/hooks/block-git-commit.sh` enforces that.
 
+Listeners follow `listener -> @Service to CRUD @Service interface -> ...` (`.claude/rules/service-architecture.md`). `InboxWorker` and `PgNotificationListener` only hand work to a service. The inbox logic lives in `InboxProcessingService`, and listeners wake each other only through `WorkerSignalService`.
+
 ## Order
 
 | # | Work item | Depends on | Status |

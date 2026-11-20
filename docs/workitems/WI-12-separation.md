@@ -15,7 +15,7 @@ Work on this item alone, and don't start the next one until this one is committe
 ---
 
 **Files:**
-- Create: `service/SeparationService(Impl)`, `processors/BoundaryVoteProcessor`, `service/handler/SeparateFileHandler` (an `InboxMessageHandler`)
+- Create: `service/SeparationService(Impl)`, `processors/BoundaryVoteProcessor`
 - Test: `processors/BoundaryVoteProcessorTests`, `service/SeparationServiceTests`
 
 **Interfaces:**
@@ -25,6 +25,8 @@ Work on this item alone, and don't start the next one until this one is committe
   - `BoundaryVoteProcessor.vote(List<SortedSet<Integer>> runs, int pageCount) → List<PageRange>`
   - `BoundaryVoteProcessor.windows(int pageCount, int size, int overlap) → List<PageRange>`
   - `SeparationService.separate(UUID sourceFileId)`
+
+The service implementation also implements `InboxMessageHandler` (WI-05) for its message type: `handle` calls the step, and `onExhausted` runs the failure path. Listeners follow `listener -> @Service to CRUD @Service interface -> ...` (`.claude/rules/service-architecture.md`): the inbox listener calls `InboxProcessingService`, which calls this service, which changes data only through CRUD services.
 
 - [ ] **Step 1: Write the failing tests.**
   - `majorityOfThreeDecidesEachGap()`: the runs `{1,3}`, `{1,3,5}` and `{1}` over 6 pages give `[1–2, 3–6]`.

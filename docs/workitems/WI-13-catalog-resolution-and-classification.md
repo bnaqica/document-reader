@@ -15,7 +15,7 @@ Work on this item alone, and don't start the next one until this one is committe
 ---
 
 **Files:**
-- Create: `processors/TypeVoteProcessor`, `service/DocumentTypeCatalogService(Impl)`, `service/ClassificationService(Impl)`, `service/handler/ClassifyDocumentHandler`
+- Create: `processors/TypeVoteProcessor`, `service/DocumentTypeCatalogService(Impl)`, `service/ClassificationService(Impl)`
 - Test: `processors/TypeVoteProcessorTests`, `service/DocumentTypeCatalogServiceTests`, `service/ClassificationServiceTests`
 
 **Interfaces:**
@@ -26,6 +26,8 @@ Work on this item alone, and don't start the next one until this one is committe
   - `TypeVoteProcessor.tally(List<ResolvedVote>) → VoteOutcome(Optional<UUID> winner, List<UUID> tied, Map<UUID, Long> counts)`
   - `TypeVoteProcessor.byConfidence(List<ResolvedVote> all, List<UUID> tied) → UUID`
   - `ClassificationService.classify(UUID documentId)`
+
+The service implementation also implements `InboxMessageHandler` (WI-05) for its message type: `handle` calls the step, and `onExhausted` runs the failure path. Listeners follow `listener -> @Service to CRUD @Service interface -> ...` (`.claude/rules/service-architecture.md`): the inbox listener calls `InboxProcessingService`, which calls this service, which changes data only through CRUD services.
 
 - [ ] **Step 1: Write the failing tests.**
   - `tallyPicksPlurality()`: Pay stubs ×4 and W-2 ×1 gives Pay stubs.
