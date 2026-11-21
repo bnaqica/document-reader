@@ -3,6 +3,7 @@ package com.bnaqica.documentreader.api;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -18,6 +19,7 @@ import com.bnaqica.documentreader.config.SecurityConfig;
 import com.bnaqica.documentreader.dto.response.DocumentTypeResponse;
 import com.bnaqica.documentreader.entity.DocumentType;
 import com.bnaqica.documentreader.entity.DocumentTypeOrigin;
+import com.bnaqica.documentreader.exception.DocumentTypeInUseException;
 import com.bnaqica.documentreader.exception.DocumentTypeKeyConflictException;
 import com.bnaqica.documentreader.exception.InvalidDataSchemaException;
 import com.bnaqica.documentreader.exception.ResourceNotFoundException;
@@ -241,5 +243,15 @@ class DocumentTypeControllerTests {
                         .content(VALID_BODY))
                 .andExpect(status().isConflict())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
+    }
+
+    @Test
+    void typeInUseIs409() throws Exception {
+        willThrow(new DocumentTypeInUseException("Pay stubs")).given(service).delete(LEASE_ID);
+
+        mockMvc.perform(delete("/document-types/" + LEASE_ID).with(admin()))
+                .andExpect(status().isConflict())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("in use")));
     }
 }

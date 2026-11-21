@@ -74,6 +74,22 @@ the same name. A name or alias whose key is already taken gets 409, naming the t
 be strict JSON Schema: every object lists all its properties as required (allowing `null` for absent values) and
 sets `"additionalProperties": false`.
 
+## Processing records API
+
+Read-only views of what the pipeline has stored. A caller sees only the batches they sent (by token subject);
+admins see every batch. A record of someone else's batch returns 404, the same as one that doesn't exist. Any method
+other than GET returns 405, for admins too: only the pipeline creates or changes records.
+
+| Path | Returns |
+|---|---|
+| `GET /records/batches?limit=50` | The caller's batches, newest first; `limit` is 1–200 |
+| `GET /records/batches/{id}` | One batch |
+| `GET /records/batches/{id}/source-files` | The batch's uploaded files, in upload order |
+| `GET /records/batches/{id}/documents` | The batch's documents, by file then page order |
+| `GET /records/source-files/{id}` | One uploaded file |
+| `GET /records/source-files/{id}/pages` | The file's rendered pages, in page order |
+| `GET /records/documents/{id}` | One document |
+
 ## Test and format
 
 ```bash

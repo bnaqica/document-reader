@@ -142,7 +142,7 @@ Tests mirror these packages under `src/test/java/com/bnaqica/documentreader/`.
     - `BatchRecord get(UUID)`
     - `void updateStatus(UUID id, BatchStatus status, String failureReason)`
     - `BatchRecord lockForUpdate(UUID id)` (`SELECT … FOR UPDATE`, which must run inside the caller's transaction)
-    - `void complete(UUID id, BatchStatus finalStatus, Instant completedAt)`
+    - `void complete(UUID id, BatchStatus finalStatus, String failureReason, Instant completedAt)`: the only way to a final status; `updateStatus` refuses final statuses and completed batches
     - `void updateWebhookStatus(UUID id, WebhookStatus status)`
   - `SourceFileService`:
     - `List<SourceFileRecord> createAll(UUID batchId, List<NewSourceFile>)`: `file_index` follows list order.
@@ -152,7 +152,7 @@ Tests mirror these packages under `src/test/java/com/bnaqica/documentreader/`.
     - `void updateStatus(UUID id, SourceFileStatus status, String failureReason)`
   - `SourceFilePageService`: `void saveAll(UUID sourceFileId, List<PageImage>)` and `List<PageRecord> findBySourceFile(UUID)`, ordered.
   - `DocumentService`:
-    - `List<DocumentRecord> createAll(UUID batchId, UUID sourceFileId, List<PageRange>)`
+    - `List<DocumentRecord> createAll(UUID sourceFileId, List<PageRange>)`: the batch comes from the file
     - `DocumentRecord get(UUID)`
     - `List<DocumentRecord> findByBatch(UUID)`, ordered by file index and then sequence
     - `List<DocumentRecord> findBySourceFile(UUID)`

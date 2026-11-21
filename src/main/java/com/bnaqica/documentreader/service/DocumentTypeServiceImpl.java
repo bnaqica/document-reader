@@ -5,6 +5,7 @@ import com.bnaqica.documentreader.dto.request.DocumentTypeRequest;
 import com.bnaqica.documentreader.dto.response.DocumentTypeResponse;
 import com.bnaqica.documentreader.entity.DocumentType;
 import com.bnaqica.documentreader.entity.DocumentTypeOrigin;
+import com.bnaqica.documentreader.exception.DocumentTypeInUseException;
 import com.bnaqica.documentreader.exception.DocumentTypeKeyConflictException;
 import com.bnaqica.documentreader.exception.InvalidDataSchemaException;
 import com.bnaqica.documentreader.exception.ResourceNotFoundException;
@@ -36,6 +37,8 @@ import tools.jackson.databind.json.JsonMapper;
 public class DocumentTypeServiceImpl implements DocumentTypeService {
 
     private static final String RESOURCE = "Document type";
+    /** Named in V5: the foreign key from document. */
+    private static final String DOCUMENT_TYPE_IN_USE_CONSTRAINT = "fk_document_type_in_use";
 
     private final DocumentTypeRepository repository;
     private final JsonMapper jsonMapper;
@@ -112,7 +115,17 @@ public class DocumentTypeServiceImpl implements DocumentTypeService {
     @Override
     @Transactional
     public void delete(UUID id) {
-        repository.delete(find(id));
+        DocumentType type = find(id);
+        try {
+            repository.delete(type);
+            repository.flush();
+        } catch (DataIntegrityViolationException e) {
+            // only the foreign key from document means "in use"; anything else is a different problem
+            if (String.valueOf(e.getMostSpecificCause().getMessage()).contains(DOCUMENT_TYPE_IN_USE_CONSTRAINT)) {
+                throw new DocumentTypeInUseException(type.getName(), e);
+            }
+            throw e;
+        }
         log.info("Deleted document type {}", id);
     }
 

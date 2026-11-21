@@ -31,6 +31,9 @@ public interface DocumentTypeService {
     /** Replaces name, description and data schema; the schema version goes up only if the schema changes. */
     DocumentTypeResponse update(UUID id, DocumentTypeRequest request);
 
-    /** Removes the type and its aliases. */
+    /**
+     * Removes the type and its aliases. Throws {@code DocumentTypeInUseException} while documents use it; the
+     * caller's transaction is then rolled back, so don't carry on in it after catching that.
+     */
     void delete(UUID id);
 }

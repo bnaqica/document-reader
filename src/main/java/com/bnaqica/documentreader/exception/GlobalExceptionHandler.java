@@ -32,7 +32,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, exception.getMessage());
     }
 
-    @ExceptionHandler({LoanPurposeExistsException.class, DocumentTypeKeyConflictException.class})
+    @ExceptionHandler({
+        LoanPurposeExistsException.class,
+        DocumentTypeKeyConflictException.class,
+        DocumentTypeInUseException.class
+    })
     ProblemDetail handleConflict(RuntimeException exception) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
     }

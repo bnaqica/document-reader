@@ -8,6 +8,7 @@ import com.bnaqica.documentreader.config.ClockConfig;
 import com.bnaqica.documentreader.dto.request.DocumentTypeRequest;
 import com.bnaqica.documentreader.dto.response.DocumentTypeResponse;
 import com.bnaqica.documentreader.entity.DocumentTypeOrigin;
+import com.bnaqica.documentreader.exception.DocumentTypeInUseException;
 import com.bnaqica.documentreader.exception.DocumentTypeKeyConflictException;
 import com.bnaqica.documentreader.exception.InvalidDataSchemaException;
 import com.bnaqica.documentreader.exception.ResourceNotFoundException;
@@ -340,6 +341,61 @@ class DocumentTypeServiceTests {
             Thread.sleep(millis);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+        }
+    }
+
+    /**
+     * Runs on committed rows outside the test transaction: the refused delete aborts the transaction it runs in, so
+     * checking afterwards that the type survived needs a fresh one.
+     */
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void typeThatADocumentUsesCannotBeRemoved() {
+        UUID payStubs = payStubs().id();
+        UUID batch = UUID.randomUUID();
+        UUID file = UUID.randomUUID();
+        try {
+            jdbc.sql("""
+                            INSERT INTO document_reader.batch
+                                (id, loan_purpose_code, async, status, webhook_status, file_count, requested_by, received_at)
+                            VALUES (?, 'CAR_REFINANCE', false, 'PROCESSING', 'NOT_APPLICABLE', 1, 'user-1', now())
+                            """).param(batch).update();
+            jdbc.sql("""
+                            INSERT INTO document_reader.source_file
+                                (id, batch_id, file_index, original_filename, content_type, size_bytes, sha256, page_count, status)
+                            VALUES (?, ?, 0, 'scan.pdf', 'application/pdf', 100, repeat('a', 64), 1, 'SEPARATED')
+                            """).params(file, batch).update();
+            jdbc.sql("""
+                            INSERT INTO document_reader.document
+                                (id, batch_id, source_file_id, sequence, start_page, end_page, status, document_type_id)
+                            VALUES (?, ?, ?, 1, 1, 1, 'CLASSIFIED', ?)
+                            """).params(UUID.randomUUID(), batch, file, payStubs).update();
+
+            jdbc.sql("INSERT INTO document_reader.document_type_alias (id, document_type_id, alias, normalized_key) "
+                            + "VALUES (?, ?, 'Earnings statement', 'earningstatement')")
+                    .params(UUID.randomUUID(), payStubs)
+                    .update();
+
+            assertThatThrownBy(() -> service.delete(payStubs))
+                    .isInstanceOf(DocumentTypeInUseException.class)
+                    .hasMessageContaining("Pay stubs")
+                    .hasCauseInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+            assertThat(service.resolve("Pay stubs")).isPresent();
+            assertThat(service.resolve("Earnings statement"))
+                    .map(DocumentTypeResponse::name)
+                    .contains("Pay stubs");
+        } finally {
+            jdbc.sql("DELETE FROM document_reader.document_type_alias WHERE normalized_key = 'earningstatement'")
+                    .update();
+            jdbc.sql("DELETE FROM document_reader.document WHERE batch_id = ?")
+                    .param(batch)
+                    .update();
+            jdbc.sql("DELETE FROM document_reader.source_file WHERE batch_id = ?")
+                    .param(batch)
+                    .update();
+            jdbc.sql("DELETE FROM document_reader.batch WHERE id = ?")
+                    .param(batch)
+                    .update();
         }
     }
 }

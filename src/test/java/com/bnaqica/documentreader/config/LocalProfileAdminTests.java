@@ -1,5 +1,6 @@
 package com.bnaqica.documentreader.config;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -34,5 +35,11 @@ class LocalProfileAdminTests {
                                 + "\"description\":\"A loan to buy a motorcycle.\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.code").value("MOTORCYCLE_PURCHASE"));
+    }
+
+    /** Spring passes null for an anonymous Authentication parameter; records must still read the local admin. */
+    @Test
+    void recordsAreReadableWithoutTokenInLocalProfile() throws Exception {
+        mockMvc.perform(get("/records/batches")).andExpect(status().isOk());
     }
 }
