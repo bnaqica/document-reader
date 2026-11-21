@@ -1,4 +1,9 @@
 # Added on top of src/main/resources/application.yml for tests. The addresses here are never contacted.
+# Environment variables that application.yml reads, with placeholder values so the application starts without real
+# credentials. Tests never call OpenAI or S3.
+OPENAI_API_KEY: test-key
+S3_BUCKET: test-bucket
+
 spring:
   security:
     oauth2:

@@ -36,6 +36,15 @@ Work on this item alone, and don't start the next one until this one is committe
 - [ ] **Step 3: Implement** with the AWS SDK v2 `S3Client`, an endpoint override from configuration for LocalStack, and `ServerSideEncryption.AWS_KMS`. In the local profile, where LocalStack lacks KMS, use `AES256`.
 - [ ] **Step 4: Run** the tests and the build. Expected: PASS.
 
+## Notes from the WI-01 review
+
+The WI-01 code review raised these. Handle each in this work item, test-first.
+
+- The `local` profile sets an S3 endpoint but no credentials, and the AWS SDK's default credentials provider fails without `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. Use static dummy credentials when `app.document-reader.s3.endpoint` is set, or document the LocalStack values in the README.
+- `software.amazon.awssdk:s3` brings in both `apache-client` and `netty-nio-client`. Pick one HTTP client explicitly and exclude the other.
+- `S3.endpoint` is a `String`. Consider making it a `URI`, so a malformed URL fails at startup.
+- `S3.bucket`, `S3.region` and `S3.prefix` aren't checked for blanks. An empty `S3_BUCKET` (for example, a missing Kubernetes secret key) binds `""`, and the service still starts. Add `@NotBlank`, with a test.
+
 ---
 
 ## Done when

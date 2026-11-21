@@ -45,6 +45,12 @@ The service implementation also implements `InboxMessageHandler` (WI-05) for its
 - [ ] **Step 3: Implement.** For a gap at page *p*, count the runs (across windows that cover both *p−1* and *p*, keeping the window where *p* is furthest from an edge) whose sanitized set contains *p*. More than half means a boundary. Make the model calls outside a transaction. Then, in one transaction, create the documents, mark the file `SEPARATED` and publish.
 - [ ] **Step 4: Run** the tests and the build. Expected: PASS.
 
+## Notes from the WI-01 review
+
+The WI-01 code review raised these. Handle each in this work item, test-first.
+
+- `separation.window-overlap` isn't checked against `separation.window-size`. An overlap equal to the window size gives a step of 0, and the windowing loops forever. Add `@AssertTrue` for `windowOverlap < windowSize` to `DocumentReaderProperties`, with a test, before writing `windows(...)`.
+
 ---
 
 ## Done when

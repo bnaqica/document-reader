@@ -11,6 +11,18 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: http://localhost:9999/local-issuer   # required at startup, but unused with authentication off
+  ai:
+    openai:
+      # From the OPENAI_API_KEY variable in your shell. It stays out of this file, which is committed.
+      api-key: ${OPENAI_API_KEY}
+# S3 goes to the LocalStack in the sibling local-docker repo. Create the bucket once:
+#   awslocal s3 mb s3://document-reader-local
+app:
+  document-reader:
+    s3:
+      bucket: document-reader-local
+      endpoint: http://localhost:4566
+      path-style-access: true
 springdoc:
   api-docs:
     enabled: true

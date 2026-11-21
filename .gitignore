@@ -14,3 +14,7 @@ out/
 
 # Claude Code personal settings
 .claude/settings.local.json
+
+# Local secrets, which the stage-new-files hook must never add to git
+.env
+.env.*

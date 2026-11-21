@@ -21,6 +21,14 @@ repositories {
     mavenCentral()
 }
 
+dependencyManagement {
+    imports {
+        // Neither is in Spring Boot's BOM. Spring AI 2.0.x is the line built against Spring Boot 4.1 (2.1 needs 4.2).
+        mavenBom 'org.springframework.ai:spring-ai-bom:2.0.3'
+        mavenBom 'software.amazon.awssdk:bom:2.59.6'
+    }
+}
+
 dependencies {
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
@@ -38,6 +46,21 @@ dependencies {
     // Starts compose.yaml during `./gradlew bootRun`; left out of the jar and the tests
     developmentOnly 'org.springframework.boot:spring-boot-docker-compose'
 
+    // OpenAI vision through Spring AI (version from the Spring AI BOM above)
+    implementation 'org.springframework.ai:spring-ai-starter-model-openai'
+    // S3 for the uploaded files and page images (version from the AWS SDK BOM above)
+    implementation 'software.amazon.awssdk:s3'
+    // The libraries below aren't in Spring Boot's BOM, so each is pinned
+    // Renders PDF pages to images
+    implementation 'org.apache.pdfbox:pdfbox:3.0.8'
+    // ImageIO readers for TIFF and WEBP
+    implementation 'com.twelvemonkeys.imageio:imageio-tiff:3.15.3'
+    implementation 'com.twelvemonkeys.imageio:imageio-webp:3.15.3'
+    // Detects an upload's real type from its bytes
+    implementation 'org.apache.tika:tika-core:4.2.0'
+    // Validates extracted data against each document type's JSON Schema; 3.x uses Jackson 3, like Spring Boot 4
+    implementation 'com.networknt:json-schema-validator:3.0.9'
+
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-security-oauth2-resource-server-test'
@@ -46,6 +69,7 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-testcontainers'
     testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
     testImplementation 'org.testcontainers:testcontainers-postgresql'
+    testImplementation 'org.testcontainers:testcontainers-localstack'
     testCompileOnly 'org.projectlombok:lombok'
     testAnnotationProcessor 'org.projectlombok:lombok'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

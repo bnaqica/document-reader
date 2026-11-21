@@ -43,6 +43,16 @@ Work on this item alone, and don't start the next one until this one is committe
 - [ ] **Step 3: Implement** with `ChatClient` and `.entity(Class)`, or a JSON-schema response format. Load prompts from `.st` templates; their wording is the builder's call (§21). Set the temperature per call from `DocumentReaderProperties.OpenAi`. Time each call and record it in `finally`.
 - [ ] **Step 4: Run** the tests and the build. Expected: PASS.
 
+## Notes from the WI-01 review
+
+The WI-01 code review raised these. Handle each in this work item, test-first.
+
+- There are two model settings: `app.document-reader.open-ai.model` and Spring AI's own `spring.ai.openai.chat.options.model`, which has a different default. Either set `spring.ai.openai.chat.options.model: ${app.document-reader.open-ai.model}`, or always pass `OpenAiChatOptions` with our model on every call. Add a test either way.
+- Spring AI's retry auto-configuration (`spring.ai.retry.*`) wraps every call. Combined with 5 classification runs and 3 tie-break runs, retries multiply latency. Set `spring.ai.retry.max-attempts` deliberately, because the inbox already retries whole steps.
+- The OpenAI starter also auto-configures embedding, image, audio and moderation models. Turn off what isn't used, for example `spring.ai.model.embedding=none`.
+- `openai-java-core` puts Jackson 2 (`com.fasterxml.jackson.core:jackson-databind`) on the classpath. Keep importing `tools.jackson.*`, and never inject a Jackson 2 `ObjectMapper` by accident.
+- `OpenAi.model` isn't checked for blanks. Add `@NotBlank`, with a test.
+
 ---
 
 ## Done when

@@ -10,6 +10,17 @@ spring:
     url: ${DB_URL}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
+  threads:
+    virtual:
+      enabled: true   # a request waiting for its batch doesn't hold a platform thread
+  servlet:
+    multipart:
+      # Follow the processing limits, so an oversized upload is refused before it is buffered
+      max-file-size: ${app.document-reader.file.max-size}
+      max-request-size: ${app.document-reader.batch.max-total-size}
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
   jpa:
     open-in-view: false
     hibernate:
@@ -33,6 +44,54 @@ management:
     web:
       exposure:
         include: health,info
+
+# Processing settings (DocumentReaderProperties). These are the defaults; the design's §17 explains each one.
+app:
+  document-reader:
+    batch:
+      max-files: 20
+      max-total-size: 200MB
+    file:
+      max-size: 50MB
+      max-pages: 100
+    conversion:
+      dpi: 200
+      max-dimension: 2048
+    separation:
+      runs: 3              # odd, so every page gap has a majority
+      window-size: 15
+      window-overlap: 2
+    classification:
+      runs: 5
+      tiebreak-runs: 3     # odd, so a two-way tie always has a winner
+      max-pages: 3
+      parallelism: 5
+      # min-successful-runs defaults to a majority of `runs`
+    extraction:
+      passes: 3
+      max-pages: 20
+    open-ai:
+      model: ${OPENAI_MODEL:gpt-4o}   # any vision-capable model
+      separation-temperature: 0.5
+      classification-temperature: 0.7
+      extraction-temperature: 0.2
+    wait:
+      timeout: 300s
+      poll-interval: 2s
+    outbox:
+      poll-interval: 1s
+    inbox:
+      max-attempts: 5
+      backoff-initial: 10s
+      backoff-max: 10m
+      lease: 10m
+    webhook:
+      max-attempts: 8
+      timeout: 10s
+    s3:
+      bucket: ${S3_BUCKET}
+      prefix: files/
+      region: us-east-1
 
 # API docs are only switched on by the `local` profile
 springdoc:

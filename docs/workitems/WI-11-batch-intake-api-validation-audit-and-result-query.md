@@ -57,6 +57,13 @@ Work on this item alone, and don't start the next one until this one is committe
   The webhook check only confirms an absolute URL with an `http` or `https` scheme (§7.1). It does no DNS lookups.
 - [ ] **Step 4: Run** the tests and the build. Expected: PASS.
 
+## Notes from the WI-01 review
+
+The WI-01 code review raised these. Handle each in this work item, test-first.
+
+- Tomcat's `server.tomcat.max-swallow-size` defaults to 2 MB. A real 60 MB upload against the 50 MB limit is cut off after 2 MB, and many clients then see a connection reset, not the 413 `ProblemDetail`. Set it to at least `batch.max-total-size` (or `-1`), with a comment and a test that sends well over the limit.
+- A refused upload (413) currently writes no audit row: `ApiAuditFilter` hits `IOException: Stream closed` reading the payload. If that hasn't already been fixed separately, it must be fixed before this work item ships, with a test that a 413 upload produces an audit row with `success=false` and status 413.
+
 ---
 
 ## Done when

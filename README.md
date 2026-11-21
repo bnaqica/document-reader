@@ -5,7 +5,7 @@ Accepts multipart document uploads for lending workflows, records each request i
 | | |
 |---|---|
 | Port | 8084 |
-| Stack | Java 25, Spring Boot 4.1, Gradle 9.9 (wrapper), PostgreSQL, Flyway, JUnit, Testcontainers, Spring Security (JWT), springdoc, Spotless, JaCoCo, Lombok, SLF4J (Logback), Jib |
+| Stack | Java 25, Spring Boot 4.1, Spring AI (OpenAI), AWS S3, Gradle 9.9 (wrapper), PostgreSQL, Flyway, JUnit, Testcontainers, Spring Security (JWT), springdoc, Spotless, JaCoCo, Lombok, SLF4J (Logback), Jib |
 
 ## Prerequisites
 
@@ -24,16 +24,28 @@ Accepts multipart document uploads for lending workflows, records each request i
 This uses the `local` profile, which turns off authentication. Swagger UI is at
 <http://localhost:8084/swagger-ui.html>.
 
+The `local` profile still needs `OPENAI_API_KEY` (see below). It stores files in the LocalStack S3 from the sibling
+`local-docker` repo, at `http://localhost:4566`. Start that LocalStack, then create the bucket once:
+
+```bash
+awslocal s3 mb s3://document-reader-local
+```
+
 ## Environment variables
 
-Needed everywhere except the `local` profile.
+| Variable | Purpose | In the `local` profile |
+|---|---|---|
+| `DB_URL` | JDBC URL of the database | Not needed (`compose.yaml`) |
+| `DB_USERNAME` | Database user | Not needed |
+| `DB_PASSWORD` | Database password | Not needed |
+| `JWT_ISSUER_URI` | Issuer whose JWTs this service accepts | Not needed (authentication is off) |
+| `OPENAI_API_KEY` | OpenAI API key, used for vision calls | **Needed** |
+| `OPENAI_MODEL` | OpenAI vision model; defaults to `gpt-4o` | Optional |
+| `S3_BUCKET` | S3 bucket for uploaded files and page images | Not needed (`document-reader-local`) |
 
-| Variable | Purpose |
-|---|---|
-| `DB_URL` | JDBC URL of the database |
-| `DB_USERNAME` | Database user |
-| `DB_PASSWORD` | Database password |
-| `JWT_ISSUER_URI` | Issuer whose JWTs this service accepts |
+Processing settings (limits, run counts, timeouts and retries) are under `app.document-reader` in
+`src/main/resources/application.yml`, with their defaults. The service refuses to start if one can't work, such as an
+even vote count or a zero limit.
 
 ## Test and format
 
