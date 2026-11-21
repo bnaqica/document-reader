@@ -57,6 +57,13 @@ public class BatchServiceImpl implements BatchService {
 
     @Override
     @Transactional(propagation = Propagation.MANDATORY)
+    public void notifyCompleted(UUID id) {
+        repository.notifyCompleted(id);
+        log.info("Queued the completion notice for batch {}; it is sent on commit", id);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
     public BatchRecord lockForUpdate(UUID id) {
         return toRecord(
                 repository.findByIdForUpdate(id).orElseThrow(() -> new ResourceNotFoundException(RESOURCE, id)));

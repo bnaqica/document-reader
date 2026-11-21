@@ -94,7 +94,7 @@ app:
       prefix: files/
       region: us-east-1
     workers:
-      enabled: true           # the dispatcher and inbox worker loops
+      enabled: true           # the dispatcher, inbox worker loops and notification listener
 
 # API docs are only switched on by the `local` profile
 springdoc:

@@ -116,8 +116,19 @@ The pipeline's steps hand work to each other through a Postgres outbox and inbox
    `backoff-max`. On the last attempt (`inbox.max-attempts`, or `webhook.max-attempts` for webhooks) the message is
    `FAILED` and its step is told, so it can fail its file or document.
 
-A message whose lease expires (its instance crashed) is claimed again. Workers wake on a signal from the same
-instance, or every `outbox.poll-interval`. `app.document-reader.workers.enabled=false` turns the loops off.
+A message whose lease expires (its instance crashed) is claimed again.
+
+Workers wake on a signal from the same instance, on a Postgres notification from another, or every
+`outbox.poll-interval`. Each instance holds one connection outside the pool that `LISTEN`s on `outbox_ready`,
+`inbox_ready` and `batch_completed`; it shows in `pg_stat_activity` as `document-reader-listener`, and reconnects with
+backoff if it drops. `app.document-reader.workers.enabled=false` turns the loops and the listener off.
+
+## Waiting for a batch
+
+A sync request waits for its batch to reach a final status. A `batch_completed` notification from whichever instance
+finished it ends the wait at once; the status is also re-read every `wait.poll-interval`, so a missed notification
+only delays it. At `wait.timeout` the wait gives up and leaves the batch processing. A wait runs outside any
+transaction, and a notification only prompts a re-read: the status decides.
 
 ## Test and format
 

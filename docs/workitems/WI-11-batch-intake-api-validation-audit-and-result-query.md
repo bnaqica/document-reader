@@ -21,6 +21,7 @@ Work on this item alone, and don't start the next one until this one is committe
 
 **Interfaces:**
 - Consumes: Work items WI-02, WI-03, WI-05, WI-06, WI-07 and WI-08, and `BatchCompletionService.onBatchFailed` (WI-10) for the S3 failure path.
+- **Waiting (from WI-06's review):** call `CompletionWaitService.await` outside any transaction (it refuses inside one), after the batch and its files are committed. Tomcat doesn't interrupt a request thread when the client disconnects, so a blocking wait runs to `wait.timeout`; use `DeferredResult` (cancelling on `onError` and `onTimeout`) if a disconnect must end it sooner. In-flight waits also delay graceful shutdown until they time out; decide whether to release them on shutdown.
 - Produces:
   - `POST /batches` (multipart: repeated `files`, `loanPurpose`, `async`, `webhookUrl`)
   - `GET /batches/{id}`

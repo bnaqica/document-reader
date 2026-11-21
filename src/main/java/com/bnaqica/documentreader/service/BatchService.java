@@ -25,6 +25,14 @@ public interface BatchService {
     BatchRecord lockForUpdate(UUID id);
 
     /**
+     * Queues {@code NOTIFY batch_completed} with the batch's id in the caller's transaction, so every instance hears
+     * of the completion only when it commits.
+     *
+     * @throws org.springframework.transaction.IllegalTransactionStateException outside a transaction
+     */
+    void notifyCompleted(UUID id);
+
+    /**
      * Moves the batch between statuses that aren't final. Throws {@code IllegalArgumentException} for a final status
      * (use {@link #complete}) and {@code IllegalStateException} for a completed batch.
      */

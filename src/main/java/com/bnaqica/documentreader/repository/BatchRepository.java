@@ -22,4 +22,8 @@ public interface BatchRepository extends JpaRepository<Batch, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT b FROM Batch b WHERE b.id = :id")
     Optional<Batch> findByIdForUpdate(@Param("id") UUID id);
+
+    /** Postgres delivers a NOTIFY only when the transaction commits, and drops it on rollback. */
+    @Query(value = "SELECT 1 FROM (SELECT pg_notify('batch_completed', CAST(:id AS text))) AS sent", nativeQuery = true)
+    int notifyCompleted(@Param("id") UUID id);
 }
