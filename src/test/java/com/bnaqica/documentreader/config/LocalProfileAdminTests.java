@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.bnaqica.documentreader.TestcontainersConfiguration;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -41,5 +42,12 @@ class LocalProfileAdminTests {
     @Test
     void recordsAreReadableWithoutTokenInLocalProfile() throws Exception {
         mockMvc.perform(get("/records/batches")).andExpect(status().isOk());
+    }
+
+    /** The run controllers read the security context the same way, so the anonymous local admin gets a real 404. */
+    @Test
+    void runRecordsAreReadableWithoutTokenInLocalProfile() throws Exception {
+        mockMvc.perform(get("/records/batches/" + UUID.randomUUID() + "/openai-calls"))
+                .andExpect(status().isNotFound());
     }
 }

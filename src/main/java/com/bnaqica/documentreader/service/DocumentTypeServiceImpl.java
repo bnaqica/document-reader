@@ -16,6 +16,7 @@ import com.bnaqica.documentreader.repository.DocumentTypeRepository;
 import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,8 +38,12 @@ import tools.jackson.databind.json.JsonMapper;
 public class DocumentTypeServiceImpl implements DocumentTypeService {
 
     private static final String RESOURCE = "Document type";
-    /** Named in V5: the foreign key from document. */
-    private static final String DOCUMENT_TYPE_IN_USE_CONSTRAINT = "fk_document_type_in_use";
+    /** The foreign keys that refer to a type (V5, V6). Only these mean "in use" when a delete is refused. */
+    private static final Set<String> TYPE_IN_USE_CONSTRAINTS = Set.of(
+            "fk_document_type_in_use",
+            "fk_classification_run_type_in_use",
+            "fk_classification_result_type_in_use",
+            "fk_extraction_result_type_in_use");
 
     private final DocumentTypeRepository repository;
     private final JsonMapper jsonMapper;
@@ -120,8 +125,9 @@ public class DocumentTypeServiceImpl implements DocumentTypeService {
             repository.delete(type);
             repository.flush();
         } catch (DataIntegrityViolationException e) {
-            // only the foreign key from document means "in use"; anything else is a different problem
-            if (String.valueOf(e.getMostSpecificCause().getMessage()).contains(DOCUMENT_TYPE_IN_USE_CONSTRAINT)) {
+            // only a foreign key that refers to the type means "in use"; anything else is a different problem
+            String message = String.valueOf(e.getMostSpecificCause().getMessage());
+            if (TYPE_IN_USE_CONSTRAINTS.stream().anyMatch(message::contains)) {
                 throw new DocumentTypeInUseException(type.getName(), e);
             }
             throw e;

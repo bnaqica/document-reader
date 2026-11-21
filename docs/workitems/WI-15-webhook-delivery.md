@@ -19,7 +19,7 @@ Work on this item alone, and don't start the next one until this one is committe
 - Test: `service/WebhookDeliveryServiceTests` (with a local HTTP server stub)
 
 **Interfaces:**
-- Consumes: Work items WI-03, WI-04, WI-05 and WI-10, and `BatchQueryService` (WI-11).
+- Consumes: Work items WI-03, WI-04, WI-05 and WI-10, and `BatchQueryService` (WI-11). Record each attempt with `WebhookDeliveryAttemptService.record` (WI-04) right after the POST returns, outside any database transaction, so a rolled-back step never loses it.
 - Produces: `WebhookDeliveryService.deliver(UUID batchId, UUID deliveryId)`. There is no signing in the proof of concept (§15).
 
 The service implementation also implements `InboxMessageHandler` (WI-05) for its message type: `handle` calls the step, and `onExhausted` runs the failure path. Listeners follow `listener -> @Service to CRUD @Service interface -> ...` (`.claude/rules/service-architecture.md`): the inbox listener calls `InboxProcessingService`, which calls this service, which changes data only through CRUD services.

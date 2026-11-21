@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Not started |
+| **Status** | Built, awaiting developer review |
 | **Depends on** | [WI-03](WI-03-core-records.md) (each committed first) |
 | **Design** | `docs/design/2026-11-20-document-reader-design.md` §9, §11, §12, §16 |
 | **Source** | `docs/superpowers/plans/2026-11-20-document-reader.md`, Task 5 |
@@ -29,19 +29,19 @@ Work on this item alone, and don't start the next one until this one is committe
   - `OpenAiCallService.record(OpenAiCallRecord)`, where `OpenAiCallRecord` carries `batchId`, `sourceFileId`, a nullable `documentId`, and `purpose`, `model`, `latencyMs`, tokens, `httpStatus` and `error`.
   - Enums: `ClassificationRound { INITIAL, TIEBREAK }`, `DecidedBy { VOTE, TIEBREAK, CONFIDENCE }`, `ExtractionStage { INITIAL, CONSOLIDATED, FINAL }`.
 
-- [ ] **Step 1: Write the failing tests.** Each service saves a row and reads it back. `openAiCallIsInIntegrationSchema()` asserts that the table resolves to `document_reader_integration.openai_call`. `openAiCallHasNoBodyColumns()` reads the table's columns from the information schema and asserts that none is named `prompt`, `response` or `body`.
-- [ ] **Step 2: Run** the tests. Expected: FAIL.
-- [ ] **Step 3: Write the V6 and V7 migrations** with the columns in §16, and implement the entities, repositories, services and controllers.
-- [ ] **Step 4: Run** the tests and the build. Expected: PASS.
+- [x] **Step 1: Write the failing tests.** Each service saves a row and reads it back. `openAiCallIsInIntegrationSchema()` asserts that the table resolves to `document_reader_integration.openai_call`. `openAiCallHasNoBodyColumns()` reads the table's columns from the information schema and asserts that none is named `prompt`, `response` or `body`.
+- [x] **Step 2: Run** the tests. Expected: FAIL.
+- [x] **Step 3: Write the V6 and V7 migrations** with the columns in §16, and implement the entities, repositories, services and controllers.
+- [x] **Step 4: Run** the tests and the build. Expected: PASS.
 
 ---
 
 ## Done when
 
-- [ ] Every step above is ticked.
-- [ ] `./gradlew spotlessApply build` passes, with all tests green.
+- [x] Every step above is ticked.
+- [x] `./gradlew spotlessApply build` passes, with all tests green.
 - [ ] `git status` shows only the files this work item names, plus their tests and fixtures.
-- [ ] A code review (`superpowers:requesting-code-review`, using the `code-reviewer` agent) has no open findings.
+- [x] A code review (`superpowers:requesting-code-review`, using the `code-reviewer` agent) has no open findings.
 - [ ] The developer has reviewed the diff.
 
 ## Commit

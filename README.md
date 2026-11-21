@@ -64,7 +64,7 @@ as an admin.
 | `GET /document-types/{id}` | One document type | No |
 | `POST /document-types` | Adds one: `{name, description, dataSchema}` | Yes |
 | `PUT /document-types/{id}` | Replaces `{name, description, dataSchema}`; a changed schema raises its version | Yes |
-| `DELETE /document-types/{id}` | Removes it and its aliases | Yes |
+| `DELETE /document-types/{id}` | Removes it and its aliases; 409 while a document, classification run or result, or extraction result refers to it | Yes |
 | `GET /document-types/{id}/aliases` | Lists a type's other names | No |
 | `POST /document-types/{id}/aliases` | Adds one: `{alias}` | Yes |
 | `DELETE /document-types/{id}/aliases/{aliasId}` | Removes one | Yes |
@@ -89,6 +89,13 @@ other than GET returns 405, for admins too: only the pipeline creates or changes
 | `GET /records/source-files/{id}` | One uploaded file |
 | `GET /records/source-files/{id}/pages` | The file's rendered pages, in page order |
 | `GET /records/documents/{id}` | One document |
+| `GET /records/batches/{id}/webhook-attempts` | The batch's webhook delivery attempts, in attempt order |
+| `GET /records/batches/{id}/openai-calls` | The batch's OpenAI calls, oldest first (model, latency, tokens, status; never prompts or responses) |
+| `GET /records/source-files/{id}/separation-runs` | The file's separation runs, by window then run number |
+| `GET /records/documents/{id}/classification-runs` | The document's classification runs, initial round then tie-break |
+| `GET /records/documents/{id}/classification-result` | The decided type, with votes; 404 until classified |
+| `GET /records/documents/{id}/extraction-runs?stage=` | The document's extraction runs, by stage then pass; `stage` (`INITIAL`, `CONSOLIDATED` or `FINAL`) is optional |
+| `GET /records/documents/{id}/extraction-result` | The final data and summary; 404 until extracted |
 
 ## Test and format
 

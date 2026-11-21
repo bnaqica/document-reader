@@ -3,6 +3,7 @@ package com.bnaqica.documentreader.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.bnaqica.documentreader.ProcessingFixtures;
 import com.bnaqica.documentreader.TestcontainersConfiguration;
 import com.bnaqica.documentreader.config.ClockConfig;
 import com.bnaqica.documentreader.dto.request.DocumentTypeRequest;
@@ -333,6 +334,70 @@ class DocumentTypeServiceTests {
         } finally {
             jdbc.sql("DELETE FROM document_reader.document_type WHERE normalized_key = 'leaseagreement'")
                     .update();
+        }
+    }
+
+    /** Runs on committed rows, like the document case above: a type that only a classification run resolved to. */
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void typeThatOnlyAClassificationRunUsesCannotBeRemoved() {
+        ProcessingFixtures fixtures = new ProcessingFixtures(jdbc);
+        UUID document = fixtures.document();
+        UUID w2 = fixtures.type("W-2 forms");
+        try {
+            jdbc.sql("""
+                            INSERT INTO document_reader.classification_run
+                                (id, document_id, round, run_number, raw_answer, document_type_id, confidence,
+                                 reasoning, succeeded, created_at)
+                            VALUES (?, ?, 'INITIAL', 1, 'W-2', ?, 0.7, 'wage statement', true, now())
+                            """).params(UUID.randomUUID(), document, w2).update();
+
+            assertThatThrownBy(() -> service.delete(w2)).isInstanceOf(DocumentTypeInUseException.class);
+            assertThat(service.resolve("W-2 forms")).isPresent();
+        } finally {
+            fixtures.deleteBatch(fixtures.batchOf(document));
+        }
+    }
+
+    /** Runs on committed rows: a type that only a classification result refers to. */
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void typeThatOnlyAClassificationResultUsesCannotBeRemoved() {
+        ProcessingFixtures fixtures = new ProcessingFixtures(jdbc);
+        UUID document = fixtures.document();
+        UUID w2 = fixtures.type("W-2 forms");
+        try {
+            jdbc.sql("""
+                            INSERT INTO document_reader.classification_result
+                                (document_id, document_type_id, votes, agreement, tie_broken, decided_by, decided_at)
+                            VALUES (?, ?, '{}'::json, 1, false, 'VOTE', now())
+                            """).params(document, w2).update();
+
+            assertThatThrownBy(() -> service.delete(w2)).isInstanceOf(DocumentTypeInUseException.class);
+            assertThat(service.resolve("W-2 forms")).isPresent();
+        } finally {
+            fixtures.deleteBatch(fixtures.batchOf(document));
+        }
+    }
+
+    /** Runs on committed rows: a type that only an extraction result refers to. */
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void typeThatOnlyAnExtractionResultUsesCannotBeRemoved() {
+        ProcessingFixtures fixtures = new ProcessingFixtures(jdbc);
+        UUID document = fixtures.document();
+        UUID payStubs = payStubs().id();
+        try {
+            jdbc.sql("""
+                            INSERT INTO document_reader.extraction_result
+                                (document_id, document_type_id, schema_version, data, summary, created_at)
+                            VALUES (?, ?, 1, '{}'::json, 'summary', now())
+                            """).params(document, payStubs).update();
+
+            assertThatThrownBy(() -> service.delete(payStubs)).isInstanceOf(DocumentTypeInUseException.class);
+            assertThat(service.resolve("Pay stubs")).isPresent();
+        } finally {
+            fixtures.deleteBatch(fixtures.batchOf(document));
         }
     }
 

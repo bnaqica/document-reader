@@ -19,7 +19,7 @@ Work on this item alone, and don't start the next one until this one is committe
 - Test: `config/SpringAiVisionClientTests` with a stub `ChatModel`
 
 **Interfaces:**
-- Consumes: `OpenAiCallService.record` (WI-04).
+- Consumes: `OpenAiCallService.record` (WI-04). Record each call right after it returns, outside any database transaction, so a rolled-back step never loses its log row.
 - Produces: `VisionClient`. Every method takes a `CallContext(UUID batchId, UUID sourceFileId, UUID documentId /* nullable */, String loanPurposeDescription)`.
   - `SeparationAnswer separate(CallContext, List<PageImageRef> pages, List<String> catalogNames)`, where `SeparationAnswer(List<Integer> startPages, List<String> labels)`
   - `ClassificationAnswer classify(CallContext, List<PageImageRef> pages, List<CatalogEntry> catalog)`, where `ClassificationAnswer(String documentType, double confidence, String reasoning)`

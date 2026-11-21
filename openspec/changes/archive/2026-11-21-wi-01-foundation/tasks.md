@@ -33,7 +33,7 @@ commit.
 
 - [x] 5.1 Run `./gradlew spotlessApply build` and verify BUILD SUCCESSFUL with every test green, including the existing security and context tests.
 - [x] 5.2 Run a code review through `superpowers:requesting-code-review`, using the `code-reviewer` agent with `openspec/changes/wi-01-foundation/` as the requirements. Fix every Critical and Important finding, and verify the build again.
-- [ ] 5.3 Tick the boxes in `docs/workitems/WI-01-foundation.md` (except the developer review and commit), and verify that `git status` lists only the files this change names.
+- [x] 5.3 Tick the boxes in `docs/workitems/WI-01-foundation.md` (except the developer review and commit), and verify that `git status` lists only the files this change names.
 
 ## Workflow follow-up
 
