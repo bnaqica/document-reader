@@ -30,4 +30,6 @@ paths:
   and say why in a comment.
 - Don't edit applied Flyway migrations; add `V<next>__<description>`.
 - Every behaviour change gets a test. Run `./gradlew spotlessApply build` before saying you're done.
-- The catch-all in `GlobalExceptionHandler` rethrows Spring Security exceptions. Keep that, or 401 and 403 become 500.
+- In `GlobalExceptionHandler`, the catch-all rethrows `AuthenticationException` so Spring Security answers 401; keep
+  that, or 401 becomes 500. `AccessDeniedException` has its own handler returning a 403 `ProblemDetail`; keep that too,
+  or a denied `@PreAuthorize` becomes an empty 403 page (or a 500 if the catch-all caught it).

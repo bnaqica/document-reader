@@ -47,6 +47,33 @@ Processing settings (limits, run counts, timeouts and retries) are under `app.do
 `src/main/resources/application.yml`, with their defaults. The service refuses to start if one can't work, such as an
 even vote count or a zero limit.
 
+## Reference data API
+
+Every call needs a bearer token. Reads are open to any valid token. Creating, changing or removing reference data
+needs the Keycloak realm role `admin`; without it the call returns 403. In the `local` profile, every request acts
+as an admin.
+
+| Method and path | What it does | Needs `admin` |
+|---|---|---|
+| `GET /loan-purposes` | Lists active loan purposes, by code | No |
+| `GET /loan-purposes/{code}` | One loan purpose, active or not | No |
+| `POST /loan-purposes` | Adds one: `{code, name, description}` | Yes |
+| `PUT /loan-purposes/{code}` | Replaces `{name, description, active}` | Yes |
+| `DELETE /loan-purposes/{code}` | Deactivates it (batches keep referring to the code) | Yes |
+| `GET /document-types` | Lists document types, by name | No |
+| `GET /document-types/{id}` | One document type | No |
+| `POST /document-types` | Adds one: `{name, description, dataSchema}` | Yes |
+| `PUT /document-types/{id}` | Replaces `{name, description, dataSchema}`; a changed schema raises its version | Yes |
+| `DELETE /document-types/{id}` | Removes it and its aliases | Yes |
+| `GET /document-types/{id}/aliases` | Lists a type's other names | No |
+| `POST /document-types/{id}/aliases` | Adds one: `{alias}` | Yes |
+| `DELETE /document-types/{id}/aliases/{aliasId}` | Removes one | Yes |
+
+Names are compared by a key that ignores case, punctuation and plurals, so "Pay stubs", "Paystub" and "pay-stub" are
+the same name. A name or alias whose key is already taken gets 409, naming the type that owns it. A `dataSchema` must
+be strict JSON Schema: every object lists all its properties as required (allowing `null` for absent values) and
+sets `"additionalProperties": false`.
+
 ## Test and format
 
 ```bash

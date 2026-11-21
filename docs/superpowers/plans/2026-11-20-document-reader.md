@@ -96,7 +96,7 @@ Tests mirror these packages under `src/test/java/com/bnaqica/documentreader/`.
   - `keyOf("W-2 forms") = keyOf("W2 form") = "w2form"`
   - `keyOf("1099 forms or K-1 forms") = "1099formork1form"`
   - `keyOf("Bank statements") = "bankstatement"`
-  - `keyOf("Homeowners association documents") = "homeownersassociationdocument"`. Words ending in "ss", "us" and "is" are kept as they are, so "address" stays "address".
+  - `keyOf("Homeowners association documents") = "homeownerassociationdocument"`. Words ending in "ss", "us" and "is" are kept as they are, so "address" stays "address".
   - Review Focus #3: `key("—")`, `key("N/A")`, `key("  ")` and `key(null)` are all empty.
 - [ ] **Step 2: Run** `./gradlew test --tests '*TypeNameNormalizerTests'`. Expected: FAIL.
 - [ ] **Step 3: Implement** the normalization in §10.2: lowercase, replace punctuation and hyphens with spaces, singularize each word, then remove all spaces. Singularize with these rules in order: `ies→y`, `sses→ss`, then a trailing `s` is removed unless the word ends in `ss`, `us` or `is`. Treat `n/a`, `na`, `none` and `unknown` as empty.
@@ -112,14 +112,15 @@ Tests mirror these packages under `src/test/java/com/bnaqica/documentreader/`.
 - Consumes: `TypeNameNormalizer.key` (Task 2).
 - Produces:
   - `LoanPurposeService`: `Optional<LoanPurposeResponse> findActive(String code)`, `List<LoanPurposeResponse> findAllActive()`, plus CRUD.
-  - `DocumentTypeService`: `List<DocumentTypeResponse> findAll()`, `Optional<DocumentTypeResponse> findByKey(String normalizedKey)` (it checks types and aliases), `DocumentTypeResponse create(NewDocumentType)` (throws `DuplicateDocumentTypeException` on a unique-key conflict), `void addAlias(UUID typeId, String alias)`, plus CRUD.
+  - `DocumentTypeService`: `findAll()`, `get(UUID)`, `Optional<DocumentTypeResponse> resolve(String name)` (normalizes the name, then matches type and alias keys), `List<CatalogEntry> catalog()`, `create(DocumentTypeRequest)` (in its own transaction; throws `DocumentTypeKeyConflictException` naming the owner), `update(UUID, DocumentTypeRequest)` and `delete(UUID)`.
+  - `DocumentTypeAliasService`: `findByType(UUID)`, `add(UUID typeId, DocumentTypeAliasRequest)` (in its own transaction) and `delete(UUID typeId, UUID aliasId)`.
   - `DocumentTypeResponse(id, name, normalizedKey, description, dataSchema (JsonNode), schemaVersion, origin)`.
 
 - [ ] **Step 1: Write the failing tests.**
   - `seedsEightLoanPurposes()`: the codes are exactly `CAR_PURCHASE`, `CAR_REFINANCE`, `HOME_PURCHASE`, `MORTGAGE_REFINANCE`, `BOAT_PURCHASE`, `BOAT_REFINANCE`, `RV_PURCHASE` and `RV_REFINANCE`, all active, each with a description.
   - `seedsFortyOneDocumentTypes()`: the count is 41. Every `normalized_key` is unique and equals `TypeNameNormalizer.key(name)`. Every `data_schema` is a valid JSON Schema object with at least one property. `origin` is `SEEDED`.
-  - `findByKeyResolvesAlias()`: after `addAlias(payStubsId, "Paystub")`, `findByKey("paystub")` returns Pay stubs.
-  - `createRejectsDuplicateKey()`: creating "Paystubs" throws `DuplicateDocumentTypeException`.
+  - `resolvesByAlias()`: after adding the alias "Earnings statement" to Pay stubs, `resolve("earnings statements")` returns Pay stubs.
+  - `createRejectsDuplicateKey()`: creating "Paystubs" throws `DocumentTypeKeyConflictException`.
   - Controllers: a GET with a `jwt()` returns 200. A POST or PUT without the admin role returns 403, and with it returns 201 or 200. A request with no token returns 401.
 - [ ] **Step 2: Run** the tests. Expected: FAIL.
 - [ ] **Step 3: Write the V2 migration** with the `loan_purpose`, `document_type` and `document_type_alias` columns in §16, a unique `normalized_key` on both type tables, and `data_schema JSONB NOT NULL`.
@@ -426,7 +427,7 @@ Tests mirror these packages under `src/test/java/com/bnaqica/documentreader/`.
 **Interfaces:**
 - Consumes: Tasks 2, 3, 4, 5, 6 and 10, and `BatchCompletionService.onDocumentFinished` (Task 14).
 - Produces:
-  - `DocumentTypeCatalogService.resolve(String rawName) → Optional<DocumentTypeResponse>`: matches by key against types and aliases; empty means new or unusable.
+  - Resolution itself is `DocumentTypeService.resolve(String name)` from WI-02: empty means new or unusable. `DocumentTypeService.create` and `DocumentTypeAliasService.add` run in their own transactions, so after a `DocumentTypeKeyConflictException` the caller can re-resolve inside its own transaction.
   - `DocumentTypeCatalogService.createOrMatch(CallContext, List<PageImageRef>, String proposedName) → DocumentTypeResponse`: runs the confirmation call, then either adds an alias or drafts a schema and creates the type, losing races gracefully.
   - `TypeVoteProcessor.tally(List<ResolvedVote>) → VoteOutcome(Optional<UUID> winner, List<UUID> tied, Map<UUID, Long> counts)`
   - `TypeVoteProcessor.byConfidence(List<ResolvedVote> all, List<UUID> tied) → UUID`
@@ -448,7 +449,7 @@ Tests mirror these packages under `src/test/java/com/bnaqica/documentreader/`.
   - `idempotentWhenResultExists()`
   - `exhaustedFailsDocumentAndRunsCompletionCheck()`, which calls `BatchCompletionService.onDocumentFinished`.
 - [ ] **Step 2: Run** the tests. Expected: FAIL.
-- [ ] **Step 3: Implement** §11. Make the initial runs through a bounded virtual-thread executor (`classification.parallelism`). Resolve every answer before tallying. On `DuplicateDocumentTypeException`, re-read by key. Save the result, set the status and publish `EXTRACT_DOCUMENT` in one transaction.
+- [ ] **Step 3: Implement** §11. Make the initial runs through a bounded virtual-thread executor (`classification.parallelism`). Resolve every answer before tallying. On `DocumentTypeKeyConflictException`, re-read by key. Save the result, set the status and publish `EXTRACT_DOCUMENT` in one transaction.
 - [ ] **Step 4: Run** the tests and the build. Expected: PASS.
 
 ### Task 14: Extraction (process 3) and batch completion

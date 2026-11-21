@@ -21,7 +21,7 @@ Work on this item alone, and don't start the next one until this one is committe
 **Interfaces:**
 - Consumes: Work items WI-02, WI-03, WI-04, WI-05 and WI-09, and `BatchCompletionService.onDocumentFinished` (WI-10).
 - Produces:
-  - `DocumentTypeCatalogService.resolve(String rawName) → Optional<DocumentTypeResponse>`: matches by key against types and aliases; empty means new or unusable.
+  - Resolution itself is `DocumentTypeService.resolve(String name)` from WI-02: empty means new or unusable. `DocumentTypeService.create` and `DocumentTypeAliasService.add` run in their own transactions, so after a `DocumentTypeKeyConflictException` the caller can re-resolve inside its own transaction.
   - `DocumentTypeCatalogService.createOrMatch(CallContext, List<PageImageRef>, String proposedName) → DocumentTypeResponse`: runs the confirmation call, then either adds an alias or drafts a schema and creates the type, losing races gracefully.
   - `TypeVoteProcessor.tally(List<ResolvedVote>) → VoteOutcome(Optional<UUID> winner, List<UUID> tied, Map<UUID, Long> counts)`
   - `TypeVoteProcessor.byConfidence(List<ResolvedVote> all, List<UUID> tied) → UUID`
@@ -45,7 +45,7 @@ The service implementation also implements `InboxMessageHandler` (WI-05) for its
   - `idempotentWhenResultExists()`
   - `exhaustedFailsDocumentAndRunsCompletionCheck()`, which calls `BatchCompletionService.onDocumentFinished`.
 - [ ] **Step 2: Run** the tests. Expected: FAIL.
-- [ ] **Step 3: Implement** §11. Make the initial runs through a bounded virtual-thread executor (`classification.parallelism`). Resolve every answer before tallying. On `DuplicateDocumentTypeException`, re-read by key. Save the result, set the status and publish `EXTRACT_DOCUMENT` in one transaction.
+- [ ] **Step 3: Implement** §11. Make the initial runs through a bounded virtual-thread executor (`classification.parallelism`). Resolve every answer before tallying. On `DocumentTypeKeyConflictException`, re-read by key. Save the result, set the status and publish `EXTRACT_DOCUMENT` in one transaction.
 - [ ] **Step 4: Run** the tests and the build. Expected: PASS.
 
 ---
