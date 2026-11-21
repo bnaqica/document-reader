@@ -32,7 +32,7 @@ Listeners follow `listener -> @Service to CRUD @Service interface -> ...` (`.cla
 | WI-02 | [Reference data: type-name normalizer, loan purposes and document types](WI-02-reference-data.md) | WI-01 | Not started |
 | WI-03 | [Core records: batches, source files, pages and documents](WI-03-core-records.md) | WI-01 | Not started |
 | WI-04 | [Run and result records, plus the OpenAI call log](WI-04-run-and-result-records-plus-the-openai-call-log.md) | WI-03 | Built, awaiting developer review |
-| WI-05 | [Inbox/outbox engine](WI-05-inbox-outbox-engine.md) | WI-01 | Not started |
+| WI-05 | [Inbox/outbox engine](WI-05-inbox-outbox-engine.md) | WI-01 | Built, awaiting developer review |
 | WI-06 | [Notifications and wait mode](WI-06-notifications-and-wait-mode.md) | WI-03, WI-05 | Not started |
 | WI-07 | [S3 storage client](WI-07-s3-storage-client.md) | WI-01 | Not started |
 | WI-08 | [Content detection and conversion to PNG](WI-08-content-detection-and-conversion-to-png.md) | WI-01 | Not started |

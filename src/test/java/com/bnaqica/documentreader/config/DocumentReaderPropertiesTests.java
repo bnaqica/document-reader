@@ -4,10 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.config.YamlPropertiesFactoryBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.servlet.autoconfigure.MultipartProperties;
 import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.util.unit.DataSize;
 
 /**
@@ -60,6 +62,9 @@ class DocumentReaderPropertiesTests {
             assertThat(properties.inbox().backoffInitial()).isEqualTo(Duration.ofSeconds(10));
             assertThat(properties.inbox().backoffMax()).isEqualTo(Duration.ofMinutes(10));
             assertThat(properties.inbox().lease()).isEqualTo(Duration.ofMinutes(10));
+            assertThat(properties.inbox().concurrency()).isEqualTo(4);
+            // the test overlay turns the background workers off; workersRunByDefault() checks the real default
+            assertThat(properties.workers().enabled()).isFalse();
 
             assertThat(properties.webhook().maxAttempts()).isEqualTo(8);
             assertThat(properties.webhook().timeout()).isEqualTo(Duration.ofSeconds(10));
@@ -142,5 +147,14 @@ class DocumentReaderPropertiesTests {
         runner.run(context -> assertThat(
                         context.getBean(DocumentReaderProperties.class).openAi().model())
                 .isEqualTo("gpt-4o"));
+    }
+
+    /** Read from the main application.yml alone, because the test overlay turns the workers off. */
+    @Test
+    void workersRunByDefault() {
+        YamlPropertiesFactoryBean yaml = new YamlPropertiesFactoryBean();
+        yaml.setResources(new ClassPathResource("application.yml"));
+
+        assertThat(yaml.getObject()).containsEntry("app.document-reader.workers.enabled", true);
     }
 }

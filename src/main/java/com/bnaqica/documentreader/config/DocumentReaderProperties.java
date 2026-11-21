@@ -34,7 +34,8 @@ public record DocumentReaderProperties(
         @Valid @NotNull Outbox outbox,
         @Valid @NotNull Inbox inbox,
         @Valid @NotNull Webhook webhook,
-        @Valid @NotNull S3 s3) {
+        @Valid @NotNull S3 s3,
+        @Valid @NotNull Workers workers) {
 
     /** Limits for one request. */
     public record Batch(@Positive int maxFiles, DataSize maxTotalSize) {
@@ -133,8 +134,13 @@ public record DocumentReaderProperties(
         }
     }
 
-    /** Retries, backoff and leases for inbox messages. */
-    public record Inbox(@Positive int maxAttempts, Duration backoffInitial, Duration backoffMax, Duration lease) {
+    /** Retries, backoff and leases for inbox messages; {@code concurrency} is how many a worker handles at once. */
+    public record Inbox(
+            @Positive int maxAttempts,
+            Duration backoffInitial,
+            Duration backoffMax,
+            Duration lease,
+            @Positive int concurrency) {
 
         @AssertTrue(message = "must be positive")
         public boolean isBackoffInitialPositive() {
@@ -160,6 +166,9 @@ public record DocumentReaderProperties(
             return positive(timeout);
         }
     }
+
+    /** The background dispatcher and inbox workers. Tests turn them off so no loop races a test. */
+    public record Workers(boolean enabled) {}
 
     /** Where files are stored. {@code endpoint} is only set to reach a non-AWS endpoint such as LocalStack. */
     public record S3(String bucket, String prefix, String region, String endpoint, boolean pathStyleAccess) {}

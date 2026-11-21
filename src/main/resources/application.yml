@@ -85,6 +85,7 @@ app:
       backoff-initial: 10s
       backoff-max: 10m
       lease: 10m
+      concurrency: 4          # messages one worker handles at once
     webhook:
       max-attempts: 8
       timeout: 10s
@@ -92,6 +93,8 @@ app:
       bucket: ${S3_BUCKET}
       prefix: files/
       region: us-east-1
+    workers:
+      enabled: true           # the dispatcher and inbox worker loops
 
 # API docs are only switched on by the `local` profile
 springdoc:

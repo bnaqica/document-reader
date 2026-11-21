@@ -483,6 +483,7 @@ form fields and each file's metadata (name, type, size, sha256), never the file 
 | `wait.timeout` / `wait.poll-interval` | 300s / 2s |
 | `outbox.poll-interval` | 1s |
 | `inbox.max-attempts` / `inbox.backoff-initial` / `inbox.backoff-max` / `inbox.lease` | 5 / 10s / 10m / 10m |
+| `inbox.concurrency` (messages one worker handles at once) / `workers.enabled` | 4 / true |
 | `webhook.max-attempts` / `webhook.timeout` | 8 / 10s |
 | `s3.bucket` / `s3.prefix` | env `S3_BUCKET` / `files/` |
 

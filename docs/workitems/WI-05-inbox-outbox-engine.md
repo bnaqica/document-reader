@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Not started |
+| **Status** | Built, awaiting developer review |
 | **Depends on** | [WI-01](WI-01-foundation.md) (each committed first) |
 | **Design** | `docs/design/2026-11-20-document-reader-design.md` §4, §13 |
 | **Source** | `docs/superpowers/plans/2026-11-20-document-reader.md`, Task 6 |
@@ -28,13 +28,12 @@ Work on this item alone, and don't start the next one until this one is committe
   - `InboxMessageService`:
     - `List<InboxMessageRecord> claimDue(MessageType, int limit, String instanceId, Duration lease)`
     - `void markDone(UUID id)`: it must be called inside the handler's final transaction.
-    - `void markRetry(UUID id, String error, Instant nextAttemptAt)`
-    - `void markFailed(UUID id, String error)`
+    - `boolean markRetry(InboxMessageRecord claim, String error, Instant nextAttemptAt)` and `boolean markFailed(InboxMessageRecord claim, String error)`: they apply only to that claim (still `PROCESSING`, same holder and attempt), so a stale or finished message is left alone. *(Changed from `UUID` during WI-05's code review.)*
   - Backoff: `nextAttempt = now + min(backoffInitial × 2^(attempts−1), backoffMax)`.
   - `InboxWorker` (listener): one loop per message type on virtual threads. It waits on `WorkerSignalService.awaitSignal(type, outbox.pollInterval)`, then calls `InboxProcessingService.processDue(type)`. It has no other logic. Listeners follow `listener -> @Service to CRUD @Service interface -> ...` (`.claude/rules/service-architecture.md`).
   - `int maxAttempts(MessageType)`: returns `inbox.maxAttempts` for every type except `DELIVER_WEBHOOK`, which uses `webhook.maxAttempts`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `publishRequiresTransaction()`: throws when called outside a transaction.
   - `publishRollsBackWithCaller()`
   - `dispatcherMovesOnceAcrossTwoDispatchers()`: two dispatchers run in parallel over 100 rows, giving 100 inbox rows and every outbox row dispatched.
@@ -47,19 +46,19 @@ Work on this item alone, and don't start the next one until this one is committe
   - `staleLeaseIsReclaimed()`: a row left `PROCESSING` with `locked_until` in the past is claimed again.
   - `signalWakesWaiter()`: `awaitSignal` returns true straight away after `signal`, and false when the timeout passes without one.
   - `inboxWorkerOnlyDelegates()`: with a mocked `InboxProcessingService`, a signal makes the worker call `processDue(type)` once, and the worker touches no repository or CRUD service.
-- [ ] **Step 2: Run** the tests. Expected: FAIL.
-- [ ] **Step 3: Write the V8 migration** for the tables in §13, with an index on `inbox_message(message_type, status, next_attempt_at)` and a partial index on `outbox_message(dispatched_at) WHERE dispatched_at IS NULL`.
-- [ ] **Step 4: Implement the claim** as one short transaction: `SELECT … WHERE status='PENDING' AND next_attempt_at <= now OR (status='PROCESSING' AND locked_until < now) … FOR UPDATE SKIP LOCKED LIMIT n`, then update to `PROCESSING` and commit. `InboxProcessingService` dispatches each claimed message to the `InboxMessageHandler` bean whose `type()` matches. `InboxWorker` only waits on `WorkerSignalService` (or the poll interval) and calls `processDue`. Until WI-06 lands, nothing signals it, so it runs on polling alone.
-- [ ] **Step 5: Run** the tests and the build. Expected: PASS.
+- [x] **Step 2: Run** the tests. Expected: FAIL.
+- [x] **Step 3: Write the V8 migration** for the tables in §13, with an index on `inbox_message(message_type, status, next_attempt_at)` and a partial index on `outbox_message(dispatched_at) WHERE dispatched_at IS NULL`.
+- [x] **Step 4: Implement the claim** as one short transaction: `SELECT … WHERE status='PENDING' AND next_attempt_at <= now OR (status='PROCESSING' AND locked_until < now) … FOR UPDATE SKIP LOCKED LIMIT n`, then update to `PROCESSING` and commit. `InboxProcessingService` dispatches each claimed message to the `InboxMessageHandler` bean whose `type()` matches. `InboxWorker` only waits on `WorkerSignalService` (or the poll interval) and calls `processDue`. Until WI-06 lands, nothing signals it, so it runs on polling alone.
+- [x] **Step 5: Run** the tests and the build. Expected: PASS.
 
 ---
 
 ## Done when
 
-- [ ] Every step above is ticked.
-- [ ] `./gradlew spotlessApply build` passes, with all tests green.
+- [x] Every step above is ticked.
+- [x] `./gradlew spotlessApply build` passes, with all tests green.
 - [ ] `git status` shows only the files this work item names, plus their tests and fixtures.
-- [ ] A code review (`superpowers:requesting-code-review`, using the `code-reviewer` agent) has no open findings.
+- [x] A code review (`superpowers:requesting-code-review`, using the `code-reviewer` agent) has no open findings.
 - [ ] The developer has reviewed the diff.
 
 ## Commit

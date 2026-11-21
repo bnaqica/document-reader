@@ -10,3 +10,8 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: http://localhost:9999/test-issuer
+
+app:
+  document-reader:
+    workers:
+      enabled: false   # tests drive dispatch and processing themselves; no background loop races them

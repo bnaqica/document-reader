@@ -42,6 +42,8 @@ awslocal s3 mb s3://document-reader-local
 | `OPENAI_API_KEY` | OpenAI API key, used for vision calls | **Needed** |
 | `OPENAI_MODEL` | OpenAI vision model; defaults to `gpt-4o` | Optional |
 | `S3_BUCKET` | S3 bucket for uploaded files and page images | Not needed (`document-reader-local`) |
+| `APP_DOCUMENTREADER_INBOX_CONCURRENCY` | Inbox messages one worker handles at once (`app.document-reader.inbox.concurrency`); defaults to 4 | Optional |
+| `APP_DOCUMENTREADER_WORKERS_ENABLED` | Runs the background dispatcher and inbox workers (`app.document-reader.workers.enabled`); defaults to `true` | Optional |
 
 Processing settings (limits, run counts, timeouts and retries) are under `app.document-reader` in
 `src/main/resources/application.yml`, with their defaults. The service refuses to start if one can't work, such as an
@@ -96,6 +98,26 @@ other than GET returns 405, for admins too: only the pipeline creates or changes
 | `GET /records/documents/{id}/classification-result` | The decided type, with votes; 404 until classified |
 | `GET /records/documents/{id}/extraction-runs?stage=` | The document's extraction runs, by stage then pass; `stage` (`INITIAL`, `CONSOLIDATED` or `FINAL`) is optional |
 | `GET /records/documents/{id}/extraction-result` | The final data and summary; 404 until extracted |
+| `GET /records/outbox-messages?limit=50` | **Admins only.** Messages steps have published, newest first |
+| `GET /records/inbox-messages?type=&status=&limit=50` | **Admins only.** Inbox messages, newest first, optionally one type and status |
+| `GET /records/inbox-messages/{id}` | **Admins only.** One inbox message, with its attempts and last error |
+
+## Messages between steps
+
+The pipeline's steps hand work to each other through a Postgres outbox and inbox:
+
+1. **Publish.** A step writes its next message to `outbox_message` in the same transaction as its own data, so a
+   rollback drops both. Postgres sends `NOTIFY outbox_ready` when it commits.
+2. **Dispatch.** A dispatcher on every instance copies undispatched rows into `inbox_message` (same id, so never
+   twice) and sends `NOTIFY inbox_ready`.
+3. **Claim.** A worker per message type claims due messages with `FOR UPDATE SKIP LOCKED` under a lease
+   (`inbox.lease`), counting one attempt each time, and commits before any work starts.
+4. **Finish.** Success marks the message `DONE`. A failure retries after `backoff-initial × 2^(attempts − 1)`, up to
+   `backoff-max`. On the last attempt (`inbox.max-attempts`, or `webhook.max-attempts` for webhooks) the message is
+   `FAILED` and its step is told, so it can fail its file or document.
+
+A message whose lease expires (its instance crashed) is claimed again. Workers wake on a signal from the same
+instance, or every `outbox.poll-interval`. `app.document-reader.workers.enabled=false` turns the loops off.
 
 ## Test and format
 

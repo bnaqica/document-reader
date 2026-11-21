@@ -47,6 +47,7 @@ class DocumentReaderPropertiesValidationTests {
         "inbox.backoff-initial, 0s",
         "inbox.backoff-max, 0s",
         "inbox.lease, 0s",
+        "inbox.concurrency, 0",
         "webhook.max-attempts, 0",
         "webhook.timeout, 0s"
     })
