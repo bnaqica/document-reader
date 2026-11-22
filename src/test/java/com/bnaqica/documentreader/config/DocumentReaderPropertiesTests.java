@@ -73,6 +73,7 @@ class DocumentReaderPropertiesTests {
             assertThat(properties.s3().region()).isEqualTo("us-east-1");
             assertThat(properties.s3().endpoint()).isNull();
             assertThat(properties.s3().pathStyleAccess()).isFalse();
+            assertThat(properties.s3().serverSideEncryption()).isEqualTo("aws:kms");
         });
     }
 

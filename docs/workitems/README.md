@@ -34,7 +34,7 @@ Listeners follow `listener -> @Service to CRUD @Service interface -> ...` (`.cla
 | WI-04 | [Run and result records, plus the OpenAI call log](WI-04-run-and-result-records-plus-the-openai-call-log.md) | WI-03 | Built, awaiting developer review |
 | WI-05 | [Inbox/outbox engine](WI-05-inbox-outbox-engine.md) | WI-01 | Built, awaiting developer review |
 | WI-06 | [Notifications and wait mode](WI-06-notifications-and-wait-mode.md) | WI-03, WI-05 | Built, awaiting developer review |
-| WI-07 | [S3 storage client](WI-07-s3-storage-client.md) | WI-01 | Not started |
+| WI-07 | [S3 storage client](WI-07-s3-storage-client.md) | WI-01 | Built, awaiting developer review |
 | WI-08 | [Content detection and conversion to PNG](WI-08-content-detection-and-conversion-to-png.md) | WI-01 | Not started |
 | WI-09 | [Vision client (Spring AI)](WI-09-vision-client.md) | WI-04, WI-07 | Not started |
 | WI-10 | [Batch completion](WI-10-batch-completion.md) | WI-03, WI-05, WI-06 | Not started |

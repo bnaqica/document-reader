@@ -49,7 +49,12 @@ dependencies {
     // OpenAI vision through Spring AI (version from the Spring AI BOM above)
     implementation 'org.springframework.ai:spring-ai-starter-model-openai'
     // S3 for the uploaded files and page images (version from the AWS SDK BOM above)
-    implementation 'software.amazon.awssdk:s3'
+    // Synchronous calls only, on virtual threads: keep the Apache client and drop the Netty one the SDK also brings.
+    // Java 25 no longer pins virtual threads in synchronized blocks, so Apache's blocking client suits them.
+    implementation('software.amazon.awssdk:s3') {
+        exclude group: 'software.amazon.awssdk', module: 'netty-nio-client'
+    }
+    implementation 'software.amazon.awssdk:apache-client'
     // The libraries below aren't in Spring Boot's BOM, so each is pinned
     // Renders PDF pages to images
     implementation 'org.apache.pdfbox:pdfbox:3.0.8'

@@ -21,6 +21,7 @@ Work on this item alone, and don't start the next one until this one is committe
 
 **Interfaces:**
 - Consumes: Work items WI-02, WI-03, WI-05, WI-06, WI-07 and WI-08, and `BatchCompletionService.onBatchFailed` (WI-10) for the S3 failure path.
+- **Storage (from WI-07's review):** take `source_file.s3_bucket` from `DocumentReaderProperties.s3().bucket()`, because the storage contract doesn't expose it. `S3Keys.original` refuses an extension that isn't 1–10 letters or digits, so derive the extension from the detected content type, or turn the refusal into the per-file 422. `GlobalExceptionHandler` has no handler for `StorageException` yet; choose its status (503 is likely) rather than letting it become a generic 500.
 - **Waiting (from WI-06's review):** call `CompletionWaitService.await` outside any transaction (it refuses inside one), after the batch and its files are committed. Tomcat doesn't interrupt a request thread when the client disconnects, so a blocking wait runs to `wait.timeout`; use `DeferredResult` (cancelling on `onError` and `onTimeout`) if a disconnect must end it sooner. In-flight waits also delay graceful shutdown until they time out; decide whether to release them on shutdown.
 - Produces:
   - `POST /batches` (multipart: repeated `files`, `loanPurpose`, `async`, `webhookUrl`)

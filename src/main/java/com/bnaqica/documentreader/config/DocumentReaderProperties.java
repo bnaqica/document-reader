@@ -2,9 +2,12 @@ package com.bnaqica.documentreader.config;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
+import java.net.URI;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.Name;
@@ -170,8 +173,34 @@ public record DocumentReaderProperties(
     /** The background dispatcher and inbox workers. Tests turn them off so no loop races a test. */
     public record Workers(boolean enabled) {}
 
-    /** Where files are stored. {@code endpoint} is only set to reach a non-AWS endpoint such as LocalStack. */
-    public record S3(String bucket, String prefix, String region, String endpoint, boolean pathStyleAccess) {}
+    /**
+     * Where files are stored. {@code endpoint} is only set to reach a non-AWS endpoint such as LocalStack.
+     * {@code serverSideEncryption} is {@code aws:kms} or {@code AES256}, as S3 writes it.
+     */
+    public record S3(
+            @NotBlank String bucket,
+
+            @NotBlank @Pattern(regexp = ".*/", message = "must end with /")
+            String prefix,
+
+            @NotBlank String region,
+            URI endpoint,
+            boolean pathStyleAccess,
+
+            @NotNull @Pattern(regexp = "aws:kms|AES256", message = "must be aws:kms or AES256")
+            String serverSideEncryption) {
+
+        /**
+         * Spring percent-encodes characters a URI can't hold, so check the result can actually be reached. A host
+         * with an underscore (some Docker Compose service names) has no URI host and is refused: use another name.
+         */
+        @AssertTrue(message = "must be an http or https URL with a host")
+        public boolean isEndpointReachable() {
+            return endpoint == null
+                    || (endpoint.getHost() != null
+                            && ("http".equals(endpoint.getScheme()) || "https".equals(endpoint.getScheme())));
+        }
+    }
 
     private static boolean positive(Duration duration) {
         return duration != null && duration.isPositive();

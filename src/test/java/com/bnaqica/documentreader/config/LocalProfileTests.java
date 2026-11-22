@@ -2,6 +2,7 @@ package com.bnaqica.documentreader.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.net.URI;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
@@ -23,7 +24,8 @@ class LocalProfileTests {
             DocumentReaderProperties.S3 s3 =
                     context.getBean(DocumentReaderProperties.class).s3();
 
-            assertThat(s3.endpoint()).isEqualTo("http://localhost:4566");
+            assertThat(s3.endpoint()).isEqualTo(URI.create("http://localhost:4566"));
+            assertThat(s3.serverSideEncryption()).isEqualTo("AES256"); // LocalStack has no KMS
             assertThat(s3.pathStyleAccess()).isTrue();
             assertThat(s3.bucket()).isEqualTo("document-reader-local");
         });

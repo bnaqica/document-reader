@@ -23,6 +23,7 @@ app:
       bucket: document-reader-local
       endpoint: http://localhost:4566
       path-style-access: true
+      server-side-encryption: AES256   # LocalStack has no KMS
 springdoc:
   api-docs:
     enabled: true

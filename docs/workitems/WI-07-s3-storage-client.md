@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Not started |
+| **Status** | Built, awaiting developer review |
 | **Depends on** | [WI-01](WI-01-foundation.md) (each committed first) |
 | **Design** | `docs/design/2026-11-20-document-reader-design.md` §8, §17 |
 | **Source** | `docs/superpowers/plans/2026-11-20-document-reader.md`, Task 8 |
@@ -26,15 +26,15 @@ Work on this item alone, and don't start the next one until this one is committe
   - Key helpers on `S3Keys`: `original(UUID sourceFileId, String ext)` returns `files/{id}/original.{ext}`, and `page(UUID sourceFileId, int page)` returns `files/{id}/pages/{nnnn}.png`.
   - Every SDK error is translated to `StorageException`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `putThenGetRoundTrips()`
   - `putUsesServerSideEncryption()`: the head-object response shows SSE is set.
   - `pageKeyIsZeroPadded()`: `page(id, 7)` ends with `/pages/0007.png`.
   - `originalKeyUsesSourceFileId()`: `original(id, "pdf")` equals `files/{id}/original.pdf`.
   - `missingKeyThrowsStorageException()`
-- [ ] **Step 2: Run** the tests. Expected: FAIL.
-- [ ] **Step 3: Implement** with the AWS SDK v2 `S3Client`, an endpoint override from configuration for LocalStack, and `ServerSideEncryption.AWS_KMS`. In the local profile, where LocalStack lacks KMS, use `AES256`.
-- [ ] **Step 4: Run** the tests and the build. Expected: PASS.
+- [x] **Step 2: Run** the tests. Expected: FAIL.
+- [x] **Step 3: Implement** with the AWS SDK v2 `S3Client`, an endpoint override from configuration for LocalStack, and `ServerSideEncryption.AWS_KMS`. In the local profile, where LocalStack lacks KMS, use `AES256`.
+- [x] **Step 4: Run** the tests and the build. Expected: PASS.
 
 ## Notes from the WI-01 review
 
@@ -49,10 +49,10 @@ The WI-01 code review raised these. Handle each in this work item, test-first.
 
 ## Done when
 
-- [ ] Every step above is ticked.
-- [ ] `./gradlew spotlessApply build` passes, with all tests green.
+- [x] Every step above is ticked.
+- [x] `./gradlew spotlessApply build` passes, with all tests green.
 - [ ] `git status` shows only the files this work item names, plus their tests and fixtures.
-- [ ] A code review (`superpowers:requesting-code-review`, using the `code-reviewer` agent) has no open findings.
+- [x] A code review (`superpowers:requesting-code-review`, using the `code-reviewer` agent) has no open findings.
 - [ ] The developer has reviewed the diff.
 
 ## Commit

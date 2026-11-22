@@ -49,7 +49,13 @@ class DocumentReaderPropertiesValidationTests {
         "inbox.lease, 0s",
         "inbox.concurrency, 0",
         "webhook.max-attempts, 0",
-        "webhook.timeout, 0s"
+        "webhook.timeout, 0s",
+        "s3.bucket, ' '",
+        "s3.prefix, ' '",
+        "s3.prefix, files",
+        "s3.region, ' '",
+        "s3.endpoint, http://local host:4566",
+        "s3.server-side-encryption, none"
     })
     void startupErrorNamesTheSettingKey(String setting, String value) {
         String key = "app.document-reader." + setting;

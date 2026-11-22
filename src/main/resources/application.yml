@@ -93,6 +93,7 @@ app:
       bucket: ${S3_BUCKET}
       prefix: files/
       region: us-east-1
+      server-side-encryption: ${S3_SERVER_SIDE_ENCRYPTION:aws:kms}
     workers:
       enabled: true           # the dispatcher, inbox worker loops and notification listener
 

@@ -31,6 +31,17 @@ The `local` profile still needs `OPENAI_API_KEY` (see below). It stores files in
 awslocal s3 mb s3://document-reader-local
 ```
 
+No AWS variables are needed locally: with an S3 endpoint override the service uses placeholder credentials, which
+LocalStack accepts, and encrypts with `AES256`, since LocalStack has no KMS. Elsewhere, credentials come from the AWS
+default chain (an IAM role in production) and objects are encrypted with `aws:kms`.
+
+Objects are stored at `files/{sourceFileId}/original.{ext}` and `files/{sourceFileId}/pages/0001.png` onwards. Keys
+hold only ids, page numbers and the extension, never a file name.
+
+The service's AWS role needs `s3:GetObject`, `s3:PutObject` and `s3:ListBucket` on the bucket, plus
+`kms:GenerateDataKey` and `kms:Decrypt` for SSE-KMS. Without `s3:ListBucket`, S3 answers a missing key with 403, so
+checking whether pages already exist fails instead of answering no.
+
 ## Environment variables
 
 | Variable | Purpose | In the `local` profile |
@@ -42,6 +53,7 @@ awslocal s3 mb s3://document-reader-local
 | `OPENAI_API_KEY` | OpenAI API key, used for vision calls | **Needed** |
 | `OPENAI_MODEL` | OpenAI vision model; defaults to `gpt-4o` | Optional |
 | `S3_BUCKET` | S3 bucket for uploaded files and page images | Not needed (`document-reader-local`) |
+| `S3_SERVER_SIDE_ENCRYPTION` | S3 server-side encryption for every object: `aws:kms` (default) or `AES256` | Not needed (`AES256`, as LocalStack has no KMS) |
 | `APP_DOCUMENTREADER_INBOX_CONCURRENCY` | Inbox messages one worker handles at once (`app.document-reader.inbox.concurrency`); defaults to 4 | Optional |
 | `APP_DOCUMENTREADER_WORKERS_ENABLED` | Runs the background dispatcher and inbox workers (`app.document-reader.workers.enabled`); defaults to `true` | Optional |
 
