@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Built, awaiting developer review |
+| **Status** | Done |
 | **Depends on** | [WI-03](WI-03-core-records.md), [WI-05](WI-05-inbox-outbox-engine.md), [WI-06](WI-06-notifications-and-wait-mode.md) (each committed first) |
 | **Design** | `docs/design/2026-11-20-document-reader-design.md` §7.3, §12 |
 | **Source** | `docs/superpowers/plans/2026-11-20-document-reader.md`, Task 14 (the completion half, moved earlier) |
@@ -53,7 +53,7 @@ The completion check (design §12) is built here, ahead of the steps that call i
 - [x] `./gradlew spotlessApply build` passes, with all tests green.
 - [x] `git status` shows only the files this work item names, plus their tests and fixtures.
 - [x] A code review (`superpowers:requesting-code-review`, using the `code-reviewer` agent) has no open findings.
-- [ ] The developer has reviewed the diff.
+- [x] The developer has reviewed the diff.
 
 ## Commit
 
