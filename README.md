@@ -157,15 +157,39 @@ the code isn't formatted. To format it:
 
 ## Build a container (Jib)
 
+The image is built on a base image with ImageMagick and libheif, which HEIC uploads need. Build the base once:
+
+```bash
+docker build -t document-reader-base:1 src/main/docker/base
+```
+
+Then build the service image:
+
 ```bash
 ./gradlew jibDockerBuild
 ```
 
-To push to a registry instead:
+Jib reads the base from the local Docker daemon (`docker://document-reader-base:1`). The base build fails unless a
+test HEIC really round-trips, so a missing HEVC decoder is caught there.
+
+To push to a registry instead, push the base there too and name it:
 
 ```bash
-IMAGE_REGISTRY=ghcr.io/my-org ./gradlew jib
+IMAGE_REGISTRY=ghcr.io/my-org ./gradlew jib -PbaseImage=ghcr.io/my-org/document-reader-base:1
 ```
+
+## Uploads and pages
+
+An upload's type comes from its bytes, never its name: PDF, PNG, JPEG, HEIC/HEIF, TIFF and WEBP are supported, and
+anything else is refused as unsupported. A password-protected or corrupt file, or an image over 100 million pixels, is
+refused as unreadable. Every page becomes an upright RGB PNG (EXIF orientation applied, HEIC rotation honoured, no
+alpha), at most `conversion.max-dimension` (2048) on its longest side; PDFs render at `conversion.dpi` (200), or less
+where that would exceed the cap.
+
+HEIC sequences (bursts) are refused as unsupported; a multi-image HEIC uses its first image. HEIC needs ImageMagick
+with libheif's HEVC decoder on the `PATH` (`magick`, or `convert` for ImageMagick 6). Without it, HEIC uploads are refused
+as unreadable, and the HEIC tests are skipped; CI installs it. On macOS: `brew install imagemagick`; on Ubuntu:
+`apt-get install imagemagick libheif1 libheif-plugin-libde265`.
 
 ## Contributing
 

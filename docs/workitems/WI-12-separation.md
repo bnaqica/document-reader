@@ -20,6 +20,7 @@ Work on this item alone, and don't start the next one until this one is committe
 
 **Interfaces:**
 - Consumes: Work items WI-03, WI-04, WI-05, WI-07, WI-08 and WI-09, and `BatchCompletionService.onFileFailed` (WI-10).
+- **Pages (from WI-08's review):** `ImageConversionProcessor.toPngPages` returns every page at once, about 2 MB per PNG, so up to 200 MB for a 100-page file. If that is too much for the worker heap, add a per-page variant (for example a `Consumer<ConvertedPage>`) and store each page in S3 before rendering the next.
 - Produces:
   - `BoundaryVoteProcessor.sanitize(List<Integer> startPages, int pageCount) → SortedSet<Integer>`
   - `BoundaryVoteProcessor.vote(List<SortedSet<Integer>> runs, int pageCount) → List<PageRange>`

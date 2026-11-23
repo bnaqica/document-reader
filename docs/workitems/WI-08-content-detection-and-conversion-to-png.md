@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Not started |
+| **Status** | Built, awaiting developer review |
 | **Depends on** | [WI-01](WI-01-foundation.md) (each committed first) |
 | **Design** | `docs/design/2026-11-20-document-reader-design.md` §3, §8 |
 | **Source** | `docs/superpowers/plans/2026-11-20-document-reader.md`, Task 9 |
@@ -24,7 +24,7 @@ Work on this item alone, and don't start the next one until this one is committe
   - `ImageConversionProcessor.pageCount(byte[], DetectedType) → int`, which throws `UnreadableDocumentException` (422).
   - `ImageConversionProcessor.toPngPages(byte[], DetectedType) → List<ConvertedPage(int pageNumber, byte[] png, int width, int height)>`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `detectsBySniffingNotExtension()`: a PDF named `.png` is detected as `PDF`.
   - `rejectsDocx()` throws `UnsupportedDocumentException`.
   - `pdfRendersOnePngPerPage()`: the 3-page PDF gives 3 pages at 200 DPI, each with its longest side at most 2048.
@@ -33,19 +33,19 @@ Work on this item alone, and don't start the next one until this one is committe
   - `dropsAlpha()`: the output PNG has no alpha channel.
   - Review Focus #5: `heicWithExif6IsUpright()` and `jpegWithExif8IsUpright()`. The output width and height are swapped relative to the raw pixel grid, and a marker pixel in the fixture lands in the expected corner.
   - Review Focus #1: `encryptedPdfIsUnreadable()` and `corruptPdfIsUnreadable()` both throw `UnreadableDocumentException` from `pageCount`.
-- [ ] **Step 2: Run** the tests. Expected: FAIL. Mark the HEIC tests with `@EnabledIf` on ImageMagick being present, and make sure CI's runner installs it.
-- [ ] **Step 3: Implement.** Use Tika `Detector` for sniffing. Render PDFs with PDFBox `PDFRenderer.renderImageWithDPI(page, dpi, ImageType.RGB)`. Read TIFF and WEBP through TwelveMonkeys. Convert HEIC with ImageMagick (`magick input.heic -auto-orient png:-`) through `ProcessBuilder`, using temp files in a private temp directory. Apply EXIF orientation for JPEG and WEBP. Resize with bicubic scaling.
-- [ ] **Step 4: Update the Jib configuration** with a base image that contains ImageMagick and libheif, keeping `configurationName = 'productionRuntimeClasspath'`. Add the ImageMagick install to `.github/workflows/build.yml`.
-- [ ] **Step 5: Run** the tests and the build. Expected: PASS.
+- [x] **Step 2: Run** the tests. Expected: FAIL. Mark the HEIC tests with `@EnabledIf` on ImageMagick being present, and make sure CI's runner installs it.
+- [x] **Step 3: Implement.** Use Tika `Detector` for sniffing. Render PDFs with PDFBox `PDFRenderer.renderImageWithDPI(page, dpi, ImageType.RGB)`. Read TIFF and WEBP through TwelveMonkeys. Convert HEIC with ImageMagick (`magick input.heic -auto-orient png:-`) through `ProcessBuilder`, using temp files in a private temp directory. Apply EXIF orientation for JPEG and WEBP. Resize with bicubic scaling.
+- [x] **Step 4: Update the Jib configuration** with a base image that contains ImageMagick and libheif, keeping `configurationName = 'productionRuntimeClasspath'`. Add the ImageMagick install to `.github/workflows/build.yml`.
+- [x] **Step 5: Run** the tests and the build. Expected: PASS.
 
 ---
 
 ## Done when
 
-- [ ] Every step above is ticked.
-- [ ] `./gradlew spotlessApply build` passes, with all tests green.
+- [x] Every step above is ticked.
+- [x] `./gradlew spotlessApply build` passes, with all tests green.
 - [ ] `git status` shows only the files this work item names, plus their tests and fixtures.
-- [ ] A code review (`superpowers:requesting-code-review`, using the `code-reviewer` agent) has no open findings.
+- [x] A code review (`superpowers:requesting-code-review`, using the `code-reviewer` agent) has no open findings.
 - [ ] The developer has reviewed the diff.
 
 ## Commit

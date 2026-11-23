@@ -58,9 +58,11 @@ dependencies {
     // The libraries below aren't in Spring Boot's BOM, so each is pinned
     // Renders PDF pages to images
     implementation 'org.apache.pdfbox:pdfbox:3.0.8'
-    // ImageIO readers for TIFF and WEBP
+    // ImageIO readers for TIFF, WEBP and JPEG (not in the Boot BOM, so pinned together)
     implementation 'com.twelvemonkeys.imageio:imageio-tiff:3.15.3'
     implementation 'com.twelvemonkeys.imageio:imageio-webp:3.15.3'
+    // CMYK and ICC-profiled JPEGs, which the JDK's reader can't decode
+    implementation 'com.twelvemonkeys.imageio:imageio-jpeg:3.15.3'
     // Detects an upload's real type from its bytes
     implementation 'org.apache.tika:tika-core:4.2.0'
     // Validates extracted data against each document type's JSON Schema; 3.x uses Jackson 3, like Spring Boot 4
@@ -117,7 +119,9 @@ jib {
     // Keeps developmentOnly dependencies such as spring-boot-docker-compose out of the image
     configurationName = 'productionRuntimeClasspath'
     from {
-        image = 'eclipse-temurin:25-jre'
+        // Temurin 25 JRE plus ImageMagick and libheif, for HEIC uploads; see src/main/docker/base/Dockerfile
+        // docker:// reads it from the local Docker daemon; pass -PbaseImage=<registry>/document-reader-base:1 to pull it
+        image = project.findProperty('baseImage') ?: 'docker://document-reader-base:1'
     }
     to {
         image = "${imageRegistry}document-reader"

@@ -18,6 +18,8 @@ jobs:
           distribution: temurin
           java-version: '25'
       - uses: gradle/actions/setup-gradle@v6
+      # HEIC uploads are converted with ImageMagick: libde265 decodes HEVC, and x265 lets the tests create a HEIC fixture
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends imagemagick libheif1 libheif-plugin-libde265 libheif-plugin-x265
       - run: ./gradlew build
       - uses: actions/upload-artifact@v7
         if: always()

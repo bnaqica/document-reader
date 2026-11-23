@@ -35,7 +35,7 @@ Listeners follow `listener -> @Service to CRUD @Service interface -> ...` (`.cla
 | WI-05 | [Inbox/outbox engine](WI-05-inbox-outbox-engine.md) | WI-01 | Built, awaiting developer review |
 | WI-06 | [Notifications and wait mode](WI-06-notifications-and-wait-mode.md) | WI-03, WI-05 | Built, awaiting developer review |
 | WI-07 | [S3 storage client](WI-07-s3-storage-client.md) | WI-01 | Built, awaiting developer review |
-| WI-08 | [Content detection and conversion to PNG](WI-08-content-detection-and-conversion-to-png.md) | WI-01 | Not started |
+| WI-08 | [Content detection and conversion to PNG](WI-08-content-detection-and-conversion-to-png.md) | WI-01 | Built, awaiting developer review |
 | WI-09 | [Vision client (Spring AI)](WI-09-vision-client.md) | WI-04, WI-07 | Not started |
 | WI-10 | [Batch completion](WI-10-batch-completion.md) | WI-03, WI-05, WI-06 | Not started |
 | WI-11 | [Batch intake API, validation, audit and result query](WI-11-batch-intake-api-validation-audit-and-result-query.md) | WI-02, WI-03, WI-05, WI-06, WI-07, WI-08, WI-10 | Not started |
