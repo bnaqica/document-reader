@@ -3,6 +3,8 @@ package com.bnaqica.documentreader.processors;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -158,5 +160,129 @@ class DataSchemaRulesTests {
                 """);
 
         assertThat(DataSchemaRules.violations(schema)).anyMatch(violation -> violation.contains("ghost"));
+    }
+
+    /** A property schema of {@code employerName} carrying one extra keyword. */
+    private static JsonNode withKeyword(String keyword, String value) {
+        return json("""
+                {
+                  "type": "object",
+                  "properties": {"employerName": {"type": ["string", "null"], "%s": %s}},
+                  "required": ["employerName"],
+                  "additionalProperties": false
+                }
+                """.formatted(keyword, value));
+    }
+
+    /** OpenAI strict structured output rejects these, so every extraction for the type would fail with HTTP 400. */
+    @ParameterizedTest
+    @CsvSource(
+            delimiter = '|',
+            value = {
+                "not | {\"type\": \"number\"}",
+                "patternProperties | {\"^x\": {\"type\": \"string\"}}",
+                "if | {\"type\": \"string\"}",
+                "propertyNames | {\"pattern\": \"^a\"}",
+                "unevaluatedProperties | false",
+                "dependentRequired | {}",
+                "contains | {\"type\": \"string\"}",
+                "minLength | 1"
+            })
+    void keywordStrictModeRejectsIsAViolation(String keyword, String value) {
+        assertThat(DataSchemaRules.violations(withKeyword(keyword, value)))
+                .anySatisfy(violation -> assertThat(violation).contains(keyword));
+    }
+
+    @ParameterizedTest
+    @CsvSource(
+            delimiter = '|',
+            value = {
+                "description | \"The employer\"",
+                "format | \"date\"",
+                "enum | [\"a\", \"b\", null]",
+                "const | \"a\"",
+                "pattern | \"^[A-Z]\"",
+            })
+    void keywordStrictModeAcceptsIsAllowed(String keyword, String value) {
+        assertThat(DataSchemaRules.violations(withKeyword(keyword, value))).isEmpty();
+    }
+
+    @Test
+    void numberAndArrayBoundsAreAllowed() {
+        JsonNode schema = json("""
+                {
+                  "type": "object",
+                  "properties": {
+                    "amount": {"type": "number", "minimum": 0, "maximum": 10, "exclusiveMinimum": -1,
+                               "exclusiveMaximum": 11, "multipleOf": 0.01},
+                    "names": {"type": "array", "items": {"type": "string"}, "minItems": 0, "maxItems": 5}
+                  },
+                  "required": ["amount", "names"],
+                  "additionalProperties": false
+                }
+                """);
+
+        assertThat(DataSchemaRules.violations(schema)).isEmpty();
+    }
+
+    /** OpenAI allows 10 levels of nesting, and extraction wraps the schema in one more. */
+    @Test
+    void schemaNestedTooDeepIsAViolation() {
+        assertThat(DataSchemaRules.violations(nested(DataSchemaRules.MAX_DEPTH + 1)))
+                .anySatisfy(violation -> assertThat(violation).contains("nested"));
+        assertThat(DataSchemaRules.violations(nested(DataSchemaRules.MAX_DEPTH)))
+                .isEmpty();
+    }
+
+    /** {@code depth} objects inside each other, the root counting as 1. */
+    private static JsonNode nested(int depth) {
+        String schema = "{\"type\": \"string\"}";
+        for (int level = 0; level < depth; level++) {
+            schema = "{\"type\": \"object\", \"properties\": {\"inner\": " + schema
+                    + "}, \"required\": [\"inner\"], \"additionalProperties\": false}";
+        }
+        return json(schema);
+    }
+
+    /** OpenAI refuses {@code anyOf} at the root, and the root's branches would otherwise go unchecked. */
+    @Test
+    void anyOfAtTheRootIsAViolation() {
+        JsonNode schema = json("""
+                {
+                  "type": "object",
+                  "properties": {"a": {"type": "string"}},
+                  "required": ["a"],
+                  "additionalProperties": false,
+                  "anyOf": [{"type": "object"}]
+                }
+                """);
+
+        assertThat(DataSchemaRules.violations(schema))
+                .anySatisfy(violation -> assertThat(violation).contains("anyOf"));
+    }
+
+    @Test
+    void booleanSubschemaIsAViolation() {
+        JsonNode schema = json("""
+                {"type": "object", "properties": {"a": true}, "required": ["a"], "additionalProperties": false}
+                """);
+
+        assertThat(DataSchemaRules.violations(schema))
+                .anySatisfy(violation -> assertThat(violation).contains("$.properties.a"));
+    }
+
+    /** Arrays don't count as a level: only objects do. */
+    @Test
+    void arraysDoNotAddToTheDepth() {
+        String schema = "{\"type\": \"string\"}";
+        for (int level = 0; level < DataSchemaRules.MAX_DEPTH; level++) {
+            String object = "{\"type\": \"object\", \"properties\": {\"inner\": " + schema
+                    + "}, \"required\": [\"inner\"], \"additionalProperties\": false}";
+            schema = level == DataSchemaRules.MAX_DEPTH - 1
+                    ? object
+                    : "{\"type\": \"array\", \"items\": " + object + "}";
+        }
+
+        assertThat(DataSchemaRules.violations(json(schema))).isEmpty();
     }
 }

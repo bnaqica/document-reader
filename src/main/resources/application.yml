@@ -21,6 +21,20 @@ spring:
   ai:
     openai:
       api-key: ${OPENAI_API_KEY}
+      chat:
+        model: ${app.document-reader.open-ai.model}   # every call names it too; this keeps Spring AI's default in line
+        # The OpenAI SDK retries timeouts, 429s and 5xx itself. Kept low: the inbox already retries whole steps, and
+        # each retry here is repeated across 5 classification and 3 tie-break runs.
+        max-retries: 2
+        timeout: 120s   # one call can't use up the 10-minute inbox lease
+    model:
+      # Only the chat model is used; the starter would otherwise set up these too
+      embedding: none
+      image: none
+      audio:
+        speech: none
+        transcription: none
+      moderation: none
   jpa:
     open-in-view: false
     hibernate:

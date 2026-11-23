@@ -37,6 +37,13 @@ Work on this item alone, and don't start the next one until this one is committe
 - [ ] **Step 3: Fix any integration gaps** the end-to-end tests expose, in the task that owns the code.
 - [ ] **Step 4: Run** `./gradlew spotlessApply build`. Expected: BUILD SUCCESSFUL, with the JaCoCo report produced. Run `./gradlew goldenTest` manually with a real key before tuning the run counts.
 
+## Notes from the WI-09 build
+
+- Spring AI 2.0.3 sends page images without OpenAI's `detail` field, so OpenAI uses `auto` rather than `high`. With
+  pages capped at 2048 px, `auto` should give the high-detail reading. Check the golden documents for missed small print
+  (footnotes, YTD columns, account numbers). If it is missed, send the request through the `openai-java` SDK directly
+  with `detail: high`.
+
 ---
 
 ## Done when

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Not started |
+| **Status** | Built, awaiting developer review |
 | **Depends on** | [WI-04](WI-04-run-and-result-records-plus-the-openai-call-log.md), [WI-07](WI-07-s3-storage-client.md) (each committed first) |
 | **Design** | `docs/design/2026-11-20-document-reader-design.md` §9–§12, §16 |
 | **Source** | `docs/superpowers/plans/2026-11-20-document-reader.md`, Task 10 |
@@ -31,7 +31,7 @@ Work on this item alone, and don't start the next one until this one is committe
   - `ExtractionAnswer finalizeExtraction(CallContext, List<PageImageRef> pages, JsonNode schema, ConsolidatedAnswer draft, List<String> validationErrors)`
   - `PageImageRef(int pageNumber, String s3Key)`. The client loads the bytes through `DocumentStorageClient` and sends PNG media at high detail.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `classifySendsImagesCatalogAndPurpose()`: the stub captures the prompt, which contains N image media, every catalog name and the purpose description.
   - `classifyUsesClassificationTemperature()`
   - `extractRequestsStructuredOutputWithSchema()`
@@ -39,9 +39,9 @@ Work on this item alone, and don't start the next one until this one is committe
   - `httpErrorBecomesVisionException()`
   - `invalidJsonBecomesVisionException()`
   - `consolidateSendsNoImages()`
-- [ ] **Step 2: Run** the tests. Expected: FAIL.
-- [ ] **Step 3: Implement** with `ChatClient` and `.entity(Class)`, or a JSON-schema response format. Load prompts from `.st` templates; their wording is the builder's call (§21). Set the temperature per call from `DocumentReaderProperties.OpenAi`. Time each call and record it in `finally`.
-- [ ] **Step 4: Run** the tests and the build. Expected: PASS.
+- [x] **Step 2: Run** the tests. Expected: FAIL.
+- [x] **Step 3: Implement** with `ChatClient` and `.entity(Class)`, or a JSON-schema response format. Load prompts from `.st` templates; their wording is the builder's call (§21). Set the temperature per call from `DocumentReaderProperties.OpenAi`. Time each call and record it in `finally`.
+- [x] **Step 4: Run** the tests and the build. Expected: PASS.
 
 ## Notes from the WI-01 review
 
@@ -57,10 +57,10 @@ The WI-01 code review raised these. Handle each in this work item, test-first.
 
 ## Done when
 
-- [ ] Every step above is ticked.
-- [ ] `./gradlew spotlessApply build` passes, with all tests green.
-- [ ] `git status` shows only the files this work item names, plus their tests and fixtures.
-- [ ] A code review (`superpowers:requesting-code-review`, using the `code-reviewer` agent) has no open findings.
+- [x] Every step above is ticked.
+- [x] `./gradlew spotlessApply build` passes, with all tests green.
+- [x] `git status` shows only the files this work item names, plus their tests and fixtures.
+- [x] A code review (`superpowers:requesting-code-review`, using the `code-reviewer` agent) has no open findings.
 - [ ] The developer has reviewed the diff.
 
 ## Commit

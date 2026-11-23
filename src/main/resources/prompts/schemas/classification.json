@@ -1,0 +1,19 @@
+{
+  "type": "object",
+  "properties": {
+    "documentType": {
+      "type": "string",
+      "description": "The document type: one of the listed names, or a new name only if none fits."
+    },
+    "confidence": {
+      "type": "number",
+      "description": "How sure you are, from 0 to 1."
+    },
+    "reasoning": {
+      "type": "string",
+      "description": "One or two sentences on what on the pages decided it."
+    }
+  },
+  "required": ["documentType", "confidence", "reasoning"],
+  "additionalProperties": false
+}

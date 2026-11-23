@@ -1,0 +1,17 @@
+{
+  "type": "object",
+  "properties": {
+    "startPages": {
+      "type": "array",
+      "description": "The page numbers where a new document starts, in ascending order. Page 1 is always one.",
+      "items": {"type": "integer"}
+    },
+    "labels": {
+      "type": "array",
+      "description": "A tentative document type for each document, in the same order as startPages.",
+      "items": {"type": "string"}
+    }
+  },
+  "required": ["startPages", "labels"],
+  "additionalProperties": false
+}

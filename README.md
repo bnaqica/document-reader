@@ -86,7 +86,9 @@ as an admin.
 Names are compared by a key that ignores case, punctuation and plurals, so "Pay stubs", "Paystub" and "pay-stub" are
 the same name. A name or alias whose key is already taken gets 409, naming the type that owns it. A `dataSchema` must
 be strict JSON Schema: every object lists all its properties as required (allowing `null` for absent values) and
-sets `"additionalProperties": false`.
+sets `"additionalProperties": false`. It may use only the keywords strict mode accepts (`type`, `properties`,
+`required`, `additionalProperties`, `items`, `anyOf`, `enum`, `const`, `description`, `format`, `pattern`, number bounds,
+`minItems` and `maxItems`), and objects may nest at most 9 deep.
 
 ## Processing records API
 
@@ -141,6 +143,25 @@ A sync request waits for its batch to reach a final status. A `batch_completed` 
 finished it ends the wait at once; the status is also re-read every `wait.poll-interval`, so a missed notification
 only delays it. At `wait.timeout` the wait gives up and leaves the batch processing. A wait runs outside any
 transaction, and a notification only prompts a re-read: the status decides.
+
+## Vision calls
+
+Every OpenAI call goes through one vision client: separation, classification, tie-break, new-type confirmation,
+schema drafting, extraction, consolidation and the final extraction. Each sends the page images (read from S3; none for
+consolidation), the loan purpose and the step's inputs, and asks for a JSON answer in a fixed shape. Extraction asks for
+the document type's own schema. Prompts live in `src/main/resources/prompts/`.
+
+- **Model and temperature:** every call names `open-ai.model`, with the separation, classification or extraction
+  temperature for its step. A blank model stops startup. Only the OpenAI chat model is set up.
+- **Retries and timeout:** the OpenAI SDK retries a timeout, 429 or 5xx twice (`spring.ai.openai.chat.max-retries`),
+  and a call times out after 120 seconds. The inbox retries the whole step after that.
+- **Failures:** an HTTP error, no answer, invalid JSON or an answer missing a required value raises a vision error
+  naming the step, never the content.
+- **Call log:** each call is logged in `document_reader_integration.openai_call` with its ids, purpose, model,
+  latency, tokens, HTTP status and a short error, never the prompt or the answer. If the row can't be written, the
+  call's answer is still used.
+- **No open transaction:** a call made inside a database transaction is refused, so no call holds a connection and a
+  rolled-back step keeps its log row.
 
 ## Test and format
 

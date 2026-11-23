@@ -1,0 +1,15 @@
+{
+  "type": "object",
+  "properties": {
+    "matchesExisting": {
+      "type": "boolean",
+      "description": "True if the proposed name means the same kind of document as one of the listed types."
+    },
+    "existingName": {
+      "type": ["string", "null"],
+      "description": "The listed type's name when matchesExisting is true, otherwise null."
+    }
+  },
+  "required": ["matchesExisting", "existingName"],
+  "additionalProperties": false
+}

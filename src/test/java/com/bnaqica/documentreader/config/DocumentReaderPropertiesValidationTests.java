@@ -50,6 +50,7 @@ class DocumentReaderPropertiesValidationTests {
         "inbox.concurrency, 0",
         "webhook.max-attempts, 0",
         "webhook.timeout, 0s",
+        "open-ai.model, ' '",
         "s3.bucket, ' '",
         "s3.prefix, ' '",
         "s3.prefix, files",

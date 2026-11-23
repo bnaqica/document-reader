@@ -106,7 +106,7 @@ public record DocumentReaderProperties(
 
     /** Which OpenAI model is called, and how varied its answers are for each step. */
     public record OpenAi(
-            String model,
+            @NotBlank String model,
             double separationTemperature,
             double classificationTemperature,
             double extractionTemperature) {}
