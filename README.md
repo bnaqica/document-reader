@@ -137,6 +137,20 @@ Workers wake on a signal from the same instance, on a Postgres notification from
 `inbox_ready` and `batch_completed`; it shows in `pg_stat_activity` as `document-reader-listener`, and reconnects with
 backoff if it drops. `app.document-reader.workers.enabled=false` turns the loops and the listener off.
 
+## Completing a batch
+
+Every step that finishes a document (completed or failed) or fails a file runs the completion check in its own
+transaction. The check locks the batch row, so only one step can complete it, and completes the batch once every file
+is `SEPARATED` or `FAILED` and every document is `COMPLETED` or `FAILED`:
+- `COMPLETED`: every file was separated and every document completed;
+- `FAILED` ("No document completed"): no document completed, including when every file failed;
+- `PARTIALLY_COMPLETED`: anything in between.
+
+Completing records the time, sends `batch_completed` on commit, and for an async batch sets `webhookStatus` to
+`PENDING` and writes one `DELIVER_WEBHOOK` message. Intake can also fail a whole batch with a reason, with the same
+notice and webhook. A check on a batch that is already complete does nothing, so retried steps are safe.
+`DELIVER_WEBHOOK` messages stay `PENDING` in the inbox until webhook delivery (WI-15) is built.
+
 ## Waiting for a batch
 
 A sync request waits for its batch to reach a final status. A `batch_completed` notification from whichever instance

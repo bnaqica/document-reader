@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Not started |
+| **Status** | Built, awaiting developer review |
 | **Depends on** | [WI-03](WI-03-core-records.md), [WI-05](WI-05-inbox-outbox-engine.md), [WI-06](WI-06-notifications-and-wait-mode.md) (each committed first) |
 | **Design** | `docs/design/2026-11-20-document-reader-design.md` §7.3, §12 |
 | **Source** | `docs/superpowers/plans/2026-11-20-document-reader.md`, Task 14 (the completion half, moved earlier) |
@@ -32,7 +32,7 @@ Work on this item alone, and don't start the next one until this one is committe
 
 The completion check (design §12) is built here, ahead of the steps that call it. Separation (WI-12), classification (WI-13) and extraction (WI-14) can then each be committed with working failure paths. Until WI-15 lands, `DELIVER_WEBHOOK` messages stay in the inbox unprocessed, which is expected.
 
-- [ ] **Step 1: Write the failing tests.** Set up rows directly through the WI-03 services; no pipeline step is needed.
+- [x] **Step 1: Write the failing tests.** Set up rows directly through the WI-03 services; no pipeline step is needed.
   - `lastDocumentsCompleteBatchOnce()`: two documents from different files finish concurrently in two threads, giving exactly one `batch_completed` notification and one webhook outbox row.
   - `doesNotCompleteWhileAFileIsStillSeparating()`: every document of file 0 is done, but file 1 is `SEPARATING`, so the batch stays `PROCESSING`.
   - `failedFileWithOtherDocumentsCompletedIsPartiallyCompleted()`
@@ -41,18 +41,18 @@ The completion check (design §12) is built here, ahead of the steps that call i
   - `notLastDocumentDoesNothing()`
   - `onBatchFailedSetsFailedAndNotifies()`
   - `calledOutsideTransactionThrows()`
-- [ ] **Step 2: Run** `./gradlew test --tests '*BatchCompletionServiceTests'`. Expected: FAIL.
-- [ ] **Step 3: Implement** the check as described in Interfaces. Use `Propagation.MANDATORY` so a caller outside a transaction fails fast.
-- [ ] **Step 4: Run** the tests, then `./gradlew spotlessApply build`. Expected: PASS.
+- [x] **Step 2: Run** `./gradlew test --tests '*BatchCompletionServiceTests'`. Expected: FAIL.
+- [x] **Step 3: Implement** the check as described in Interfaces. Use `Propagation.MANDATORY` so a caller outside a transaction fails fast.
+- [x] **Step 4: Run** the tests, then `./gradlew spotlessApply build`. Expected: PASS.
 
 ---
 
 ## Done when
 
-- [ ] Every step above is ticked.
-- [ ] `./gradlew spotlessApply build` passes, with all tests green.
-- [ ] `git status` shows only the files this work item names, plus their tests and fixtures.
-- [ ] A code review (`superpowers:requesting-code-review`, using the `code-reviewer` agent) has no open findings.
+- [x] Every step above is ticked.
+- [x] `./gradlew spotlessApply build` passes, with all tests green.
+- [x] `git status` shows only the files this work item names, plus their tests and fixtures.
+- [x] A code review (`superpowers:requesting-code-review`, using the `code-reviewer` agent) has no open findings.
 - [ ] The developer has reviewed the diff.
 
 ## Commit
