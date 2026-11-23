@@ -105,6 +105,19 @@ properties as required, allow `null` for values a document may lack, and disallo
   properties
 - **THEN** the response is 400 as a problem detail naming `dataSchema`
 
+### Requirement: Data schemas use only what OpenAI strict mode accepts
+A data schema SHALL use only the keywords OpenAI strict structured output accepts. `anyOf` and `items` SHALL NOT
+appear at the root, and objects SHALL nest at most 9 deep, the root counting as 1, leaving one level for the
+extraction wrapper. A schema breaking these rules SHALL be refused with 400.
+
+#### Scenario: Keyword strict mode doesn't accept
+- **WHEN** an admin creates a type whose schema gives a string property `minLength`
+- **THEN** the response is 400 as a problem detail naming `dataSchema`
+
+#### Scenario: Objects nested too deep
+- **WHEN** an admin creates a type whose schema nests objects 10 deep
+- **THEN** the response is 400 as a problem detail naming `dataSchema`
+
 ### Requirement: The service starts with the 41 lender document types
 On first start, the catalog SHALL hold the 41 lender document types listed in the Fresh database scenario, and no
 others. Each SHALL have origin `SEEDED`, schema version 1, a description, and a data schema covering the fields
