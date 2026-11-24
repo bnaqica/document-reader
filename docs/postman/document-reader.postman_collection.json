@@ -1,0 +1,1033 @@
+{
+  "info": {
+    "name": "document-reader",
+    "description": "The document-reader API: batch intake and results, reference data, and the read-only processing records.\n\n**Setup**\n- `baseUrl` defaults to the local service (`./gradlew bootRun`, port 8084).\n- Every request except the health check sends `Authorization: Bearer {{token}}`. Set `token` to a Keycloak access token for this service. The `local` profile turns authentication off and acts as an admin, so `token` can stay empty there.\n- Requests that change reference data need the `admin` realm role.\n- The batch requests upload the synthetic fixtures in `src/test/resources/fixtures/`. Set Postman's working directory to the repository root so their paths resolve. Send only synthetic or sample documents.\n- Requests save the ids they return (`batchId`, `sourceFileId`, `documentId`, `documentTypeId`, `aliasId`, `inboxMessageId`) into collection variables, so the requests after them work without copying ids.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8084"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "loanPurpose",
+      "value": "CAR_REFINANCE"
+    },
+    {
+      "key": "webhookUrl",
+      "value": "http://localhost:9000/webhook"
+    },
+    {
+      "key": "loanPurposeCode",
+      "value": "BOAT_PURCHASE"
+    },
+    {
+      "key": "batchId",
+      "value": ""
+    },
+    {
+      "key": "sourceFileId",
+      "value": ""
+    },
+    {
+      "key": "documentId",
+      "value": ""
+    },
+    {
+      "key": "documentTypeId",
+      "value": ""
+    },
+    {
+      "key": "aliasId",
+      "value": ""
+    },
+    {
+      "key": "inboxMessageId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "description": "",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ]
+            },
+            "description": "Open: needs no token.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Batches",
+      "description": "Send a batch and read its result. A caller reads only the batches they sent; an admin reads every batch.",
+      "item": [
+        {
+          "name": "Send a batch (sync)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/batches",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "batches"
+              ]
+            },
+            "description": "Sends the synthetic packet and licence and waits up to `wait.timeout` (300 s). 200 with the result if it finishes in time, otherwise 202 with a `statusUrl`. Saves `batchId`. Makes real OpenAI calls.\n\nPaths are relative to Postman's working directory; set it to the repository root (Settings > General > Working directory), or pick the files again. The fixtures are synthetic.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "loanPurpose",
+                  "value": "{{loanPurpose}}",
+                  "type": "text",
+                  "description": "An active code from GET /loan-purposes"
+                },
+                {
+                  "key": "async",
+                  "value": "false",
+                  "type": "text",
+                  "description": "true or false (default false)"
+                },
+                {
+                  "key": "files",
+                  "type": "file",
+                  "src": "src/test/resources/fixtures/packet-paystub-w2-bank.pdf",
+                  "description": "Six pages: a pay stub, a W-2 and a bank statement"
+                },
+                {
+                  "key": "files",
+                  "type": "file",
+                  "src": "src/test/resources/fixtures/license.jpg",
+                  "description": "A one-page driver's licence photo"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.batchId) { pm.collectionVariables.set('batchId', body.batchId); }",
+                  "pm.test('Batch accepted', () => pm.expect(pm.response.code).to.be.oneOf([200, 202]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send a batch (async, webhook)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/batches",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "batches"
+              ]
+            },
+            "description": "Answers 202 at once with `batchId`, `status` and `statusUrl`; the result is posted to `webhookUrl` when the batch completes. Saves `batchId`.\n\nPaths are relative to Postman's working directory; set it to the repository root (Settings > General > Working directory), or pick the files again. The fixtures are synthetic.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "loanPurpose",
+                  "value": "{{loanPurpose}}",
+                  "type": "text",
+                  "description": "An active code from GET /loan-purposes"
+                },
+                {
+                  "key": "async",
+                  "value": "true",
+                  "type": "text",
+                  "description": ""
+                },
+                {
+                  "key": "webhookUrl",
+                  "value": "{{webhookUrl}}",
+                  "type": "text",
+                  "description": "Required when async is true; an absolute http or https URL"
+                },
+                {
+                  "key": "files",
+                  "type": "file",
+                  "src": "src/test/resources/fixtures/packet-paystub-w2-bank.pdf",
+                  "description": "Six pages: a pay stub, a W-2 and a bank statement"
+                },
+                {
+                  "key": "files",
+                  "type": "file",
+                  "src": "src/test/resources/fixtures/license.jpg",
+                  "description": "A one-page driver's licence photo"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.batchId) { pm.collectionVariables.set('batchId', body.batchId); }",
+                  "pm.test('Batch accepted', () => pm.expect(pm.response.code).to.be.oneOf([200, 202]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get a batch result",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/batches/{{batchId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "batches",
+                "{{batchId}}"
+              ]
+            },
+            "description": "The result envelope at any stage: the batch, its files and one payload per document. Saves the first `sourceFileId` and `documentId` for the records requests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "if (body.files && body.files.length) { pm.collectionVariables.set('sourceFileId', body.files[0].id); }",
+                  "if (body.documents && body.documents.length) { pm.collectionVariables.set('documentId', body.documents[0].id); }"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Reference data",
+      "description": "Loan purposes, document types and their aliases.",
+      "item": [
+        {
+          "name": "Loan purposes",
+          "description": "Reads need any valid token; changes need the `admin` realm role.",
+          "item": [
+            {
+              "name": "List loan purposes",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/loan-purposes",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "loan-purposes"
+                  ]
+                },
+                "description": "Active loan purposes, by code."
+              }
+            },
+            {
+              "name": "Get a loan purpose",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/loan-purposes/{{loanPurposeCode}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "loan-purposes",
+                    "{{loanPurposeCode}}"
+                  ]
+                },
+                "description": "One loan purpose, active or not."
+              }
+            },
+            {
+              "name": "Create a loan purpose",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/loan-purposes",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "loan-purposes"
+                  ]
+                },
+                "description": "Admin only. `code` is upper-case letters, digits and underscores, starting with a letter (at most 50).",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"code\": \"{{loanPurposeCode}}\",\n  \"name\": \"Boat purchase\",\n  \"description\": \"Buying a boat with a secured loan.\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "Update a loan purpose",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/loan-purposes/{{loanPurposeCode}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "loan-purposes",
+                    "{{loanPurposeCode}}"
+                  ]
+                },
+                "description": "Admin only. Replaces the name, description and active flag.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Boat purchase\",\n  \"description\": \"Buying or refinancing a boat.\",\n  \"active\": true\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "Deactivate a loan purpose",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/loan-purposes/{{loanPurposeCode}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "loan-purposes",
+                    "{{loanPurposeCode}}"
+                  ]
+                },
+                "description": "Admin only. Deactivates it; batches keep referring to the code."
+              }
+            }
+          ]
+        },
+        {
+          "name": "Document types",
+          "description": "Reads need any valid token; changes need the `admin` realm role. A `dataSchema` must be strict JSON Schema: every property required (nullable when it may be absent) and `additionalProperties: false`.",
+          "item": [
+            {
+              "name": "List document types",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/document-types",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "document-types"
+                  ]
+                },
+                "description": "Every document type, by name."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const body = pm.response.json();",
+                      "if (Array.isArray(body) && body.length && !pm.collectionVariables.get('documentTypeId')) {",
+                      "  pm.collectionVariables.set('documentTypeId', body[0].id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get a document type",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/document-types/{{documentTypeId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "document-types",
+                    "{{documentTypeId}}"
+                  ]
+                },
+                "description": "One document type, with its data schema."
+              }
+            },
+            {
+              "name": "Create a document type",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/document-types",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "document-types"
+                  ]
+                },
+                "description": "Admin only. Saves `documentTypeId`.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Boat registration\",\n  \"description\": \"A state or federal registration of a boat.\",\n  \"dataSchema\": {\n    \"type\": \"object\",\n    \"properties\": {\n      \"vesselName\": {\n        \"type\": [\n          \"string\",\n          \"null\"\n        ],\n        \"description\": \"Name of the vessel\"\n      },\n      \"hullNumber\": {\n        \"type\": [\n          \"string\",\n          \"null\"\n        ],\n        \"description\": \"Hull identification number\"\n      },\n      \"registrationDate\": {\n        \"type\": [\n          \"string\",\n          \"null\"\n        ],\n        \"format\": \"date\",\n        \"description\": \"Date registered\"\n      }\n    },\n    \"required\": [\n      \"vesselName\",\n      \"hullNumber\",\n      \"registrationDate\"\n    ],\n    \"additionalProperties\": false\n  }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Created', () => pm.response.to.have.status(201));",
+                      "pm.collectionVariables.set('documentTypeId', pm.response.json().id);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Update a document type",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/document-types/{{documentTypeId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "document-types",
+                    "{{documentTypeId}}"
+                  ]
+                },
+                "description": "Admin only. Replaces name, description and schema; a changed schema raises the version.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Boat registration\",\n  \"description\": \"A state or federal registration of a boat or other vessel.\",\n  \"dataSchema\": {\n    \"type\": \"object\",\n    \"properties\": {\n      \"vesselName\": {\n        \"type\": [\n          \"string\",\n          \"null\"\n        ],\n        \"description\": \"Name of the vessel\"\n      },\n      \"hullNumber\": {\n        \"type\": [\n          \"string\",\n          \"null\"\n        ],\n        \"description\": \"Hull identification number\"\n      },\n      \"registrationDate\": {\n        \"type\": [\n          \"string\",\n          \"null\"\n        ],\n        \"format\": \"date\",\n        \"description\": \"Date registered\"\n      }\n    },\n    \"required\": [\n      \"vesselName\",\n      \"hullNumber\",\n      \"registrationDate\"\n    ],\n    \"additionalProperties\": false\n  }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "Delete a document type",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/document-types/{{documentTypeId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "document-types",
+                    "{{documentTypeId}}"
+                  ]
+                },
+                "description": "Admin only. Removes it and its aliases; 409 while any document, run or result refers to it."
+              }
+            }
+          ]
+        },
+        {
+          "name": "Document type aliases",
+          "description": "Other names that resolve to a document type.",
+          "item": [
+            {
+              "name": "List aliases",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/document-types/{{documentTypeId}}/aliases",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "document-types",
+                    "{{documentTypeId}}",
+                    "aliases"
+                  ]
+                },
+                "description": "The type's other names."
+              }
+            },
+            {
+              "name": "Add an alias",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/document-types/{{documentTypeId}}/aliases",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "document-types",
+                    "{{documentTypeId}}",
+                    "aliases"
+                  ]
+                },
+                "description": "Admin only. 409 if the alias's key already belongs to a type. Saves `aliasId`.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"alias\": \"Vessel registration\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Created', () => pm.response.to.have.status(201));",
+                      "pm.collectionVariables.set('aliasId', pm.response.json().id);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Remove an alias",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/document-types/{{documentTypeId}}/aliases/{{aliasId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "document-types",
+                    "{{documentTypeId}}",
+                    "aliases",
+                    "{{aliasId}}"
+                  ]
+                },
+                "description": "Admin only."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Processing records",
+      "description": "Read-only views of what the pipeline stored. A caller sees only their own batches; another caller's record is 404.",
+      "item": [
+        {
+          "name": "Batches",
+          "description": "",
+          "item": [
+            {
+              "name": "List my batches",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/records/batches?limit=50",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "records",
+                    "batches"
+                  ],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "50",
+                      "description": "1 to 200"
+                    }
+                  ]
+                },
+                "description": "The caller's batches, newest first."
+              }
+            },
+            {
+              "name": "Get a batch record",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/records/batches/{{batchId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "records",
+                    "batches",
+                    "{{batchId}}"
+                  ]
+                },
+                "description": "One batch."
+              }
+            },
+            {
+              "name": "List a batch's source files",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/records/batches/{{batchId}}/source-files",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "records",
+                    "batches",
+                    "{{batchId}}",
+                    "source-files"
+                  ]
+                },
+                "description": "In upload order."
+              }
+            },
+            {
+              "name": "List a batch's documents",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/records/batches/{{batchId}}/documents",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "records",
+                    "batches",
+                    "{{batchId}}",
+                    "documents"
+                  ]
+                },
+                "description": "By file, then page order."
+              }
+            },
+            {
+              "name": "List webhook attempts",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/records/batches/{{batchId}}/webhook-attempts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "records",
+                    "batches",
+                    "{{batchId}}",
+                    "webhook-attempts"
+                  ]
+                },
+                "description": "In attempt order."
+              }
+            },
+            {
+              "name": "List OpenAI calls",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/records/batches/{{batchId}}/openai-calls",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "records",
+                    "batches",
+                    "{{batchId}}",
+                    "openai-calls"
+                  ]
+                },
+                "description": "Oldest first: model, latency, tokens and status, never prompts or answers."
+              }
+            }
+          ]
+        },
+        {
+          "name": "Source files",
+          "description": "",
+          "item": [
+            {
+              "name": "Get a source file",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/records/source-files/{{sourceFileId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "records",
+                    "source-files",
+                    "{{sourceFileId}}"
+                  ]
+                },
+                "description": "One uploaded file."
+              }
+            },
+            {
+              "name": "List a file's pages",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/records/source-files/{{sourceFileId}}/pages",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "records",
+                    "source-files",
+                    "{{sourceFileId}}",
+                    "pages"
+                  ]
+                },
+                "description": "Rendered pages, in page order."
+              }
+            },
+            {
+              "name": "List separation runs",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/records/source-files/{{sourceFileId}}/separation-runs",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "records",
+                    "source-files",
+                    "{{sourceFileId}}",
+                    "separation-runs"
+                  ]
+                },
+                "description": "By window, then run number."
+              }
+            }
+          ]
+        },
+        {
+          "name": "Documents",
+          "description": "",
+          "item": [
+            {
+              "name": "Get a document",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/records/documents/{{documentId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "records",
+                    "documents",
+                    "{{documentId}}"
+                  ]
+                },
+                "description": "One document."
+              }
+            },
+            {
+              "name": "List classification runs",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/records/documents/{{documentId}}/classification-runs",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "records",
+                    "documents",
+                    "{{documentId}}",
+                    "classification-runs"
+                  ]
+                },
+                "description": "Initial round, then tie-break."
+              }
+            },
+            {
+              "name": "Get the classification result",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/records/documents/{{documentId}}/classification-result",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "records",
+                    "documents",
+                    "{{documentId}}",
+                    "classification-result"
+                  ]
+                },
+                "description": "The decided type, with votes; 404 until classified."
+              }
+            },
+            {
+              "name": "List extraction runs",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/records/documents/{{documentId}}/extraction-runs",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "records",
+                    "documents",
+                    "{{documentId}}",
+                    "extraction-runs"
+                  ],
+                  "query": [
+                    {
+                      "key": "stage",
+                      "value": "FINAL",
+                      "description": "Optional: INITIAL, CONSOLIDATED or FINAL",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "By stage, then pass."
+              }
+            },
+            {
+              "name": "Get the extraction result",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/records/documents/{{documentId}}/extraction-result",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "records",
+                    "documents",
+                    "{{documentId}}",
+                    "extraction-result"
+                  ]
+                },
+                "description": "The final data and summary; 404 until extracted."
+              }
+            }
+          ]
+        },
+        {
+          "name": "Messages (admin)",
+          "description": "Admins only.",
+          "item": [
+            {
+              "name": "List outbox messages",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/records/outbox-messages?limit=50",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "records",
+                    "outbox-messages"
+                  ],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "50",
+                      "description": "1 to 200"
+                    }
+                  ]
+                },
+                "description": "Newest first."
+              }
+            },
+            {
+              "name": "List inbox messages",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/records/inbox-messages?limit=50",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "records",
+                    "inbox-messages"
+                  ],
+                  "query": [
+                    {
+                      "key": "type",
+                      "value": "EXTRACT_DOCUMENT",
+                      "description": "Optional: SEPARATE_FILE, CLASSIFY_DOCUMENT, EXTRACT_DOCUMENT or DELIVER_WEBHOOK",
+                      "disabled": true
+                    },
+                    {
+                      "key": "status",
+                      "value": "FAILED",
+                      "description": "Optional: PENDING, PROCESSING, DONE or FAILED",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "50",
+                      "description": "1 to 200"
+                    }
+                  ]
+                },
+                "description": "Newest first. Saves the first `inboxMessageId`."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const body = pm.response.json();",
+                      "if (Array.isArray(body) && body.length) { pm.collectionVariables.set('inboxMessageId', body[0].id); }"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get an inbox message",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/records/inbox-messages/{{inboxMessageId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "records",
+                    "inbox-messages",
+                    "{{inboxMessageId}}"
+                  ]
+                },
+                "description": "One inbox message, with its attempts and last error."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
