@@ -28,6 +28,13 @@ public interface DocumentTypeService {
      */
     DocumentTypeResponse create(DocumentTypeRequest request);
 
+    /**
+     * Creates a {@code MODEL} type at schema version 1, recording the document whose classification named it, in its
+     * own transaction like {@link #create}. Throws {@code DocumentTypeKeyConflictException} when the name's key is
+     * taken, including by a type another document created at the same moment.
+     */
+    DocumentTypeResponse createFromModel(DocumentTypeRequest request, UUID createdByDocumentId);
+
     /** Replaces name, description and data schema; the schema version goes up only if the schema changes. */
     DocumentTypeResponse update(UUID id, DocumentTypeRequest request);
 

@@ -212,6 +212,35 @@ class BatchQueryServiceTests {
     }
 
     @Test
+    void votesForANewNameCountUnderItsTypeOrName() {
+        DocumentRecord document = oneDocument();
+        UUID moonRock = modelType("Moon rock appraisal");
+        // Saved before the type existed, so with no type id: two variant spellings of it, and a name that never won
+        int runNumber = 10;
+        for (String answer : List.of("Moon rock appraisals", "Moon-rock appraisal", "Unicorn licence")) {
+            classificationRuns.save(
+                    document.id(),
+                    new NewClassificationRun(
+                            ClassificationRound.INITIAL, runNumber++, answer, null, BigDecimal.ONE, "why", true));
+        }
+        classificationRuns.save(
+                document.id(),
+                new NewClassificationRun(ClassificationRound.INITIAL, runNumber, null, null, null, null, false));
+        runs(document.id(), ClassificationRound.INITIAL, payStubs);
+        classify(document.id(), moonRock, false, DecidedBy.VOTE, "0.50");
+
+        DocumentResultResponse.Classification classification =
+                onlyDocument(document).classification();
+
+        assertThat(classification.runs()).isEqualTo(4);
+        assertThat(classification.votes())
+                .containsEntry("Moon rock appraisal", 2)
+                .containsEntry("Unicorn licence", 1)
+                .containsEntry("Pay stubs", 1)
+                .hasSize(3);
+    }
+
+    @Test
     void modelCreatedTypeIsNew() {
         DocumentRecord document = oneDocument();
         UUID marineSurvey = modelType("Moon rock appraisal");

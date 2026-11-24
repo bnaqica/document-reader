@@ -25,6 +25,9 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.transaction.IllegalTransactionStateException;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 @DataJpaTest
 @Import({
@@ -79,6 +82,22 @@ class DocumentServiceTests {
                         VALUES (?, ?, ?, 'scan.pdf', 'application/pdf', 100, repeat('a', 64), 6, 'SEPARATING')
                         """).params(id, batch, index).update();
         return id;
+    }
+
+    @Test
+    void lockForUpdateReturnsTheDocumentAsItIsNow() {
+        UUID id = service.createAll(file0, List.of(new PageRange(1, 2)))
+                .getFirst()
+                .id();
+
+        assertThat(service.lockForUpdate(id).status()).isEqualTo(DocumentStatus.PENDING);
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void lockForUpdateOutsideATransactionIsRefused() {
+        assertThatThrownBy(() -> service.lockForUpdate(UUID.randomUUID()))
+                .isInstanceOf(IllegalTransactionStateException.class);
     }
 
     @Test

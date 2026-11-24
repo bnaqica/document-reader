@@ -17,6 +17,7 @@ import com.bnaqica.documentreader.dto.response.SourceFileRecord;
 import com.bnaqica.documentreader.entity.ClassificationRound;
 import com.bnaqica.documentreader.entity.DocumentTypeOrigin;
 import com.bnaqica.documentreader.exception.ResourceNotFoundException;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -82,6 +83,23 @@ public class BatchQueryServiceImpl implements BatchQueryService {
                 .build();
     }
 
+    /**
+     * A run's type name; for a run that voted for a name not in the catalog then, the type that name resolves to now
+     * (the type the model created, say), or else the name as answered. Each answer is resolved once per query.
+     */
+    private String nameOf(
+            ClassificationRunRecord run, Map<UUID, DocumentTypeResponse> types, Map<String, String> namesOfAnswers) {
+        if (run.documentTypeId() != null) {
+            return types.get(run.documentTypeId()).name();
+        }
+        return namesOfAnswers.computeIfAbsent(
+                run.rawAnswer(),
+                answer -> documentTypes
+                        .resolve(answer)
+                        .map(DocumentTypeResponse::name)
+                        .orElse(answer.strip()));
+    }
+
     private DocumentResultResponse toDocument(DocumentRecord doc, Map<UUID, DocumentTypeResponse> types) {
         DocumentResultResponse.DocumentResultResponseBuilder result = DocumentResultResponse.builder()
                 .id(doc.id())
@@ -103,7 +121,7 @@ public class BatchQueryServiceImpl implements BatchQueryService {
     }
 
     /** Votes come from the successful runs of each round, so they don't depend on how the result stored them. */
-    private static Classification toClassification(
+    private Classification toClassification(
             ClassificationResultRecord decided,
             List<ClassificationRunRecord> runs,
             Map<UUID, DocumentTypeResponse> types) {
@@ -121,18 +139,20 @@ public class BatchQueryServiceImpl implements BatchQueryService {
                 .build();
     }
 
+    /** A run voted for a type, or (with no type id) for a name the catalog didn't have when it ran. */
     private static List<ClassificationRunRecord> successful(
             List<ClassificationRunRecord> runs, ClassificationRound round) {
         return runs.stream()
-                .filter(run -> run.round() == round && run.succeeded() && run.documentTypeId() != null)
+                .filter(run -> run.round() == round && run.succeeded())
+                .filter(run -> run.documentTypeId() != null || run.rawAnswer() != null)
                 .toList();
     }
 
     /** Count per type name, most votes first; ties keep the order the types were first voted for. */
-    private static Map<String, Integer> votes(
-            List<ClassificationRunRecord> runs, Map<UUID, DocumentTypeResponse> types) {
+    private Map<String, Integer> votes(List<ClassificationRunRecord> runs, Map<UUID, DocumentTypeResponse> types) {
         Map<String, Integer> counts = new LinkedHashMap<>();
-        runs.forEach(run -> counts.merge(types.get(run.documentTypeId()).name(), 1, Integer::sum));
+        Map<String, String> namesOfAnswers = new HashMap<>();
+        runs.forEach(run -> counts.merge(nameOf(run, types, namesOfAnswers), 1, Integer::sum));
         return counts.entrySet().stream()
                 .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
                 .collect(Collectors.toMap(

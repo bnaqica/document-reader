@@ -80,6 +80,17 @@ public class DocumentTypeServiceImpl implements DocumentTypeService {
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public DocumentTypeResponse create(DocumentTypeRequest request) {
+        return insert(request, DocumentTypeOrigin.MANUAL, null);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public DocumentTypeResponse createFromModel(DocumentTypeRequest request, UUID createdByDocumentId) {
+        return insert(request, DocumentTypeOrigin.MODEL, createdByDocumentId);
+    }
+
+    private DocumentTypeResponse insert(
+            DocumentTypeRequest request, DocumentTypeOrigin origin, UUID createdByDocumentId) {
         String key = keyOf(request.name());
         requireStrict(request.dataSchema());
         rejectTakenKey(key, null);
@@ -90,11 +101,12 @@ public class DocumentTypeServiceImpl implements DocumentTypeService {
                 .description(request.description())
                 .dataSchema(jsonMapper.writeValueAsString(request.dataSchema()))
                 .schemaVersion(1)
-                .origin(DocumentTypeOrigin.MANUAL)
+                .origin(origin)
+                .createdByDocumentId(createdByDocumentId)
                 .createdAt(clock.instant())
                 .build();
         saveAndFlush(type, key);
-        log.info("Created document type {}", type.getId());
+        log.info("Created {} document type {}", origin, type.getId());
         return toResponse(type);
     }
 

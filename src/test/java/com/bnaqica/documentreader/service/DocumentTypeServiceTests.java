@@ -16,6 +16,7 @@ import com.bnaqica.documentreader.exception.ResourceNotFoundException;
 import com.bnaqica.documentreader.exception.UnusableNameException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.Callable;
@@ -32,6 +33,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.transaction.AfterTransaction;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -127,6 +129,39 @@ class DocumentTypeServiceTests {
 
         assertThatThrownBy(() -> service.get(unknown)).isInstanceOf(ResourceNotFoundException.class);
         assertThatThrownBy(() -> service.delete(unknown)).isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void createFromModelRecordsOriginAndDocument() {
+        TransactionTemplate committed = new TransactionTemplate(transactionManager);
+        committed.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        ProcessingFixtures fixtures = new ProcessingFixtures(jdbc);
+        UUID document = committed.execute(status -> fixtures.document());
+        try {
+            DocumentTypeResponse created = service.createFromModel(
+                    new DocumentTypeRequest("Moon rock appraisal", "Named by the model", schema("appraiser")),
+                    document);
+
+            assertThat(created.origin()).isEqualTo(DocumentTypeOrigin.MODEL);
+            assertThat(created.schemaVersion()).isEqualTo(1);
+            // Committed in its own transaction, so another connection already sees it
+            Map<String, Object> row = committed.execute(status -> jdbc.sql(
+                            "SELECT origin, created_by_document_id FROM document_reader.document_type WHERE id = ?")
+                    .param(created.id())
+                    .query()
+                    .singleRow());
+            assertThat(row).containsEntry("origin", "MODEL").containsEntry("created_by_document_id", document);
+            assertThatThrownBy(() -> service.createFromModel(
+                            new DocumentTypeRequest("Moon-rock appraisals", "Again", schema("appraiser")), document))
+                    .isInstanceOf(DocumentTypeKeyConflictException.class);
+        } finally {
+            committed.executeWithoutResult(status -> {
+                jdbc.sql("DELETE FROM document_reader.document_type WHERE created_by_document_id = ?")
+                        .param(document)
+                        .update();
+                fixtures.deleteBatch(fixtures.batchOf(document));
+            });
+        }
     }
 
     @Test

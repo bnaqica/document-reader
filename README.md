@@ -232,6 +232,37 @@ A file whose message is exhausted becomes `FAILED` ("Separation failed"), and th
 batch's other files carry on. A message for a file already separated or failed does nothing.
 `separation.window-overlap` must be at least 1 and less than `separation.window-size`, or the service won't start.
 
+## Classifying a document
+
+Each document's `CLASSIFY_DOCUMENT` message decides its type:
+
+1. **Runs.**
+   - The document becomes `CLASSIFYING`.
+   - Its first `classification.max-pages` pages (3), the loan purpose and the catalog go to `classification.runs`
+     classification calls (5), at most `classification.parallelism` at a time (5).
+   - Each run is saved as it finishes, and a retry makes only the calls still missing.
+   - Fewer than `classification.min-successful-runs` successful runs (a majority) fails the attempt, and the inbox
+     retries it.
+2. **Resolving.** Every answer is resolved to the catalog by its name's key before it is counted, so "Paystub" and
+   "Pay stubs" are votes for the same type.
+   - A name with no usable key ("N/A") is a failed run.
+   - A name that resolves to no type counts as a vote for that new name.
+3. **The vote.**
+   - The most votes wins (`VOTE`).
+   - On a tie, `classification.tiebreak-runs` (3) calls may choose only among the tied candidates (`TIEBREAK`).
+   - If that ties too, the highest average confidence over both rounds wins (`CONFIDENCE`).
+4. **A winning name that isn't in the catalog.** One call asks whether it is an existing type under another name.
+   - If it is, the name becomes that type's alias.
+   - If not, one call drafts its data schema and a `MODEL` type is created. Its description is "not yet reviewed".
+   - Two documents creating the same type at once end up with one.
+5. **Finishing.** One transaction saves the result, assigns the type, sets the document to `CLASSIFIED` and queues
+   `EXTRACT_DOCUMENT`.
+   - The result records the votes, the agreement (winner votes ÷ the first-round runs counted), whether a tie-break
+     ran, and how the type was decided.
+
+A document whose message is exhausted becomes `FAILED` ("Classification failed"), and the batch completion check runs.
+A message for a document that is already classified, further along or failed does nothing.
+
 ## Completing a batch
 
 Every step that finishes a document (completed or failed) or fails a file runs the completion check in its own

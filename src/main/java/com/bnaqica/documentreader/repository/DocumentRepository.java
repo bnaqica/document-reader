@@ -1,13 +1,21 @@
 package com.bnaqica.documentreader.repository;
 
 import com.bnaqica.documentreader.entity.Document;
+import jakarta.persistence.LockModeType;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface DocumentRepository extends JpaRepository<Document, UUID> {
+
+    /** {@code SELECT … FOR UPDATE}: a second locker waits until this transaction ends. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT d FROM Document d WHERE d.id = :id")
+    Optional<Document> findByIdForUpdate(@Param("id") UUID id);
 
     /** Every document of the batch's first file in sequence order, then the next file's, and so on. */
     @Query("""

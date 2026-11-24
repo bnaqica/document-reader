@@ -20,6 +20,14 @@ public interface DocumentService {
     /** Throws {@code ResourceNotFoundException} for an unknown id. */
     DocumentRecord get(UUID id);
 
+    /**
+     * Locks the document for the rest of the caller's transaction and returns it as it is now, so a second locker
+     * waits until that transaction ends. Make it the first read of the document in the transaction.
+     *
+     * @throws org.springframework.transaction.IllegalTransactionStateException outside a transaction
+     */
+    DocumentRecord lockForUpdate(UUID id);
+
     /** By file index, then sequence. */
     List<DocumentRecord> findByBatch(UUID batchId);
 
