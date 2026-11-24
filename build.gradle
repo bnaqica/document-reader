@@ -83,11 +83,30 @@ dependencies {
 }
 
 tasks.named('test') {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        excludeTags 'golden' // real OpenAI calls; only goldenTest runs them
+    }
     // Spring keeps each test configuration's context (with its pool and Hibernate model) cached for the whole run;
     // the 512 MB default ran out once WI-12 added its context
     maxHeapSize = '1g'
     finalizedBy tasks.named('jacocoTestReport')
+}
+
+// The golden suite: the synthetic fixtures through the real OpenAI model, printing accuracy and token totals.
+// Needs OPENAI_API_KEY and costs real calls, so it is never part of `check` or `build`; run it by hand.
+tasks.register('goldenTest', Test) {
+    description = 'Measures accuracy and cost against the real OpenAI model (needs OPENAI_API_KEY).'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform {
+        includeTags 'golden'
+    }
+    maxHeapSize = '1g'
+    outputs.upToDateWhen { false } // a measurement, so never skipped as up to date
+    testLogging {
+        showStandardStreams = true // the results table is logged
+    }
 }
 
 jacoco {

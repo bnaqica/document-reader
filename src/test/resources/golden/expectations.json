@@ -1,0 +1,23 @@
+{
+  "batches": [
+    {
+      "name": "packet and licence",
+      "files": ["packet-paystub-w2-bank.pdf", "license.jpg"],
+      "documents": [
+        {"file": 0, "start": 1, "end": 2, "type": "Pay stubs"},
+        {"file": 0, "start": 3, "end": 3, "type": "W-2 forms"},
+        {"file": 0, "start": 4, "end": 6, "type": "Bank statements"},
+        {"file": 1, "start": 1, "end": 1, "type": "Driver's license or government photo ID"}
+      ]
+    },
+    {
+      "name": "packet alone",
+      "files": ["packet-paystub-w2-bank.pdf"],
+      "documents": [
+        {"file": 0, "start": 1, "end": 2, "type": "Pay stubs"},
+        {"file": 0, "start": 3, "end": 3, "type": "W-2 forms"},
+        {"file": 0, "start": 4, "end": 6, "type": "Bank statements"}
+      ]
+    }
+  ]
+}

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Not started |
+| **Status** | Built, awaiting developer review |
 | **Depends on** | All of WI-01 to WI-15, each committed first |
 | **Design** | `docs/design/2026-11-20-document-reader-design.md` §20 |
 | **Source** | `docs/superpowers/plans/2026-11-20-document-reader.md`, Task 16 |
@@ -21,7 +21,7 @@ Work on this item alone, and don't start the next one until this one is committe
 **Interfaces:**
 - Consumes: everything above. The stub `ChatModel` is scripted per purpose.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `syncBatchReturnsOnePayloadPerDocument()`: a batch of two files (a 3-document PDF and a single-page license photo) with `CAR_REFINANCE` returns 200 with four documents in order:
     - Pay stubs (file 0, pages 1–2)
     - W-2 forms (file 0, page 3)
@@ -33,9 +33,13 @@ Work on this item alone, and don't start the next one until this one is committe
   - `twoAppInstancesShareWorkWithoutDuplicates()`: two Spring contexts on one database and 10 batches give exactly 10 completed batches and no duplicate run rows.
   - `instanceKilledMidExtractionIsRecovered()`: the lease expires and a second instance finishes.
   - `goldenSuite()` runs only when `OPENAI_API_KEY` is set and the `golden` tag is selected. It runs on synthetic or sample documents only, and prints per-type accuracy, separation accuracy, and per-batch token totals from `openai_call`.
-- [ ] **Step 2: Run** `./gradlew test --tests '*PipelineEndToEndTests'`. Expected: FAIL.
-- [ ] **Step 3: Fix any integration gaps** the end-to-end tests expose, in the task that owns the code.
-- [ ] **Step 4: Run** `./gradlew spotlessApply build`. Expected: BUILD SUCCESSFUL, with the JaCoCo report produced. Run `./gradlew goldenTest` manually with a real key before tuning the run counts.
+- [x] **Step 2: Run** `./gradlew test --tests '*PipelineEndToEndTests'`. Expected: FAIL.
+  - Each test failed until its stub support and helpers existed. Once they did, every test passed with no production
+    change, so each was checked by breaking its stub on purpose (see `openspec/changes/wi-16-end-to-end/tasks.md`).
+- [x] **Step 3: Fix any integration gaps** the end-to-end tests expose, in the task that owns the code.
+  - None were found. The deviations from the plan are listed in the change's `design.md`. The golden suite is
+    `GoldenDocumentTests` in the root test package, since the package rules allow no new packages.
+- [x] **Step 4: Run** `./gradlew spotlessApply build`. Expected: BUILD SUCCESSFUL, with the JaCoCo report produced. Run `./gradlew goldenTest` manually with a real key before tuning the run counts.
 
 ## Notes from the WI-09 build
 
@@ -48,10 +52,10 @@ Work on this item alone, and don't start the next one until this one is committe
 
 ## Done when
 
-- [ ] Every step above is ticked.
-- [ ] `./gradlew spotlessApply build` passes, with all tests green.
-- [ ] `git status` shows only the files this work item names, plus their tests and fixtures.
-- [ ] A code review (`superpowers:requesting-code-review`, using the `code-reviewer` agent) has no open findings.
+- [x] Every step above is ticked.
+- [x] `./gradlew spotlessApply build` passes, with all tests green.
+- [x] `git status` shows only the files this work item names, plus their tests and fixtures.
+- [x] A code review (`superpowers:requesting-code-review`, using the `code-reviewer` agent) has no open findings.
 - [ ] The developer has reviewed the diff.
 
 ## Commit

@@ -4,5 +4,8 @@
 - [Implementation plan](superpowers/plans/2026-11-20-document-reader.md): the whole build as test-first tasks.
 - [Work items](workitems/README.md): the plan split into work items, developed and committed one at a time.
 
-Feature specs will live in `openspec/` once it is initialized (proposals under `openspec/changes`, accepted specs
-under `openspec/specs`).
+Each work item was specified and built through [OpenSpec](../openspec/):
+- [Current specs](../openspec/specs/): one folder per capability, describing what the service does now.
+- [Archived changes](../openspec/changes/archive/): one folder per work item, with its proposal, design, tasks and spec
+  changes.
+- Changes in progress sit in `openspec/changes/` until they are archived.

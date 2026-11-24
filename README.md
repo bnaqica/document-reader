@@ -35,6 +35,28 @@ No AWS variables are needed locally: with an S3 endpoint override the service us
 LocalStack accepts, and encrypts with `AES256`, since LocalStack has no KMS. Elsewhere, credentials come from the AWS
 default chain (an IAM role in production) and objects are encrypted with `aws:kms`.
 
+### Send a batch
+
+With the service running locally (authentication is off), send the synthetic test packet and licence, and wait for the
+result:
+
+```bash
+curl -s http://localhost:8084/batches \
+  -F loanPurpose=CAR_REFINANCE -F async=false \
+  -F files=@src/test/resources/fixtures/packet-paystub-w2-bank.pdf \
+  -F files=@src/test/resources/fixtures/license.jpg
+```
+
+The answer is the batch result described under [Batch API](#batch-api). If processing takes longer than
+`wait.timeout`, the answer is 202 with a `statusUrl`; read the result from there later:
+
+```bash
+curl -s http://localhost:8084/batches/{batchId}
+```
+
+With `-F async=true -F webhookUrl=https://…`, the answer is 202 at once and the result is posted to the webhook.
+These calls use real OpenAI requests, so they cost tokens. Only send synthetic or sample documents (§2a).
+
 Objects are stored at `files/{sourceFileId}/original.{ext}` and `files/{sourceFileId}/pages/0001.png` onwards. Keys
 hold only ids, page numbers and the extension, never a file name.
 
@@ -60,6 +82,17 @@ checking whether pages already exist fails instead of answering no.
 Processing settings (limits, run counts, timeouts and retries) are under `app.document-reader` in
 `src/main/resources/application.yml`, with their defaults. The service refuses to start if one can't work, such as an
 even vote count or a zero limit.
+
+## Endpoints
+
+| Area | Endpoints | Details |
+|---|---|---|
+| Batches | `POST /batches`, `GET /batches/{id}` | [Batch API](#batch-api) |
+| Reference data | `/loan-purposes`, `/document-types`, `/document-types/{id}/aliases` | [Reference data API](#reference-data-api) |
+| Processing records | `GET /records/…` (read-only) | [Processing records API](#processing-records-api) |
+| Health | `GET /actuator/health` (no token) | |
+
+Every endpoint except the health check needs a bearer token, except in the `local` profile.
 
 ## Batch API
 
@@ -319,7 +352,7 @@ is `SEPARATED` or `FAILED` and every document is `COMPLETED` or `FAILED`:
 Completing records the time, sends `batch_completed` on commit, and for an async batch sets `webhookStatus` to
 `PENDING` and writes one `DELIVER_WEBHOOK` message. Intake can also fail a whole batch with a reason, with the same
 notice and webhook. A check on a batch that is already complete does nothing, so retried steps are safe.
-`DELIVER_WEBHOOK` messages stay `PENDING` in the inbox until webhook delivery (WI-15) is built.
+Its delivery is described under [Delivering a webhook](#delivering-a-webhook).
 
 ## Waiting for a batch
 
@@ -359,6 +392,40 @@ the code isn't formatted. To format it:
 ```bash
 ./gradlew spotlessApply
 ```
+
+### End-to-end tests
+
+`PipelineEndToEndTests` runs the real application with its workers on, against Testcontainers Postgres and LocalStack
+S3, with only OpenAI replaced. The stand-in, `PipelineChatModel`, tells each call's step from its prompt's wording.
+It tells each page's document from a coloured band across the top of every page of the synthetic fixtures in
+`src/test/resources/fixtures/`. The tests cover:
+- a sync batch's result;
+- an async batch's single webhook;
+- two instances sharing ten batches without duplicate work;
+- an instance that dies during extraction, whose message another instance finishes after the lease.
+
+The fixtures are written by `FixtureGenerator` (run its `main` from the project root to change them). Every name,
+number and amount in them is made up.
+
+### Golden suite
+
+The golden suite sends the synthetic fixtures through the **real** OpenAI model, to measure the pipeline before run
+counts or prompts are tuned:
+
+```bash
+OPENAI_API_KEY=sk-… ./gradlew goldenTest
+```
+
+It prints, for each batch in `src/test/resources/golden/expectations.json`:
+- its status;
+- the document boundaries after page 1 that it found, against those expected;
+- its total tokens, from the OpenAI call log.
+
+It then prints separation recall and precision, counting only the boundaries after page 1, and classification
+accuracy per document type. It reports accuracy but doesn't assert it. It reports every batch first, and then fails
+only if one didn't reach a final status in time. Every run costs real OpenAI calls, so it is never part of
+`./gradlew build`, and without `OPENAI_API_KEY` it is skipped. It uses only synthetic documents; never add real
+borrower documents to it.
 
 ## Build a container (Jib)
 
