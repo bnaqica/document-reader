@@ -75,6 +75,21 @@ class UploadLimitTests {
         assertThat(response.statusCode()).isEqualTo(413);
     }
 
+    /**
+     * Tomcat stops reading a refused upload after {@code server.tomcat.max-swallow-size}; with the 2 MB default, a
+     * client still sending a large file sees its connection reset instead of the 413.
+     */
+    @Test
+    void largeRefusedUploadGets413Problem() throws Exception {
+        int sixtyMegabytes = 60 * 1024 * 1024;
+
+        HttpResponse<String> response = upload(sixtyMegabytes);
+
+        assertThat(response.statusCode()).isEqualTo(413);
+        assertThat(response.headers().firstValue("Content-Type")).hasValue("application/problem+json");
+        assertThat(response.body()).contains("\"status\":413");
+    }
+
     @Test
     void fileWithinLimitIsAccepted() throws Exception {
         int oneMegabyte = 1024 * 1024;

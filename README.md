@@ -61,6 +61,76 @@ Processing settings (limits, run counts, timeouts and retries) are under `app.do
 `src/main/resources/application.yml`, with their defaults. The service refuses to start if one can't work, such as an
 even vote count or a zero limit.
 
+## Batch API
+
+`POST /batches` (multipart) sends a batch, and `GET /batches/{id}` reads its result at any stage. Both need a bearer
+token. A caller reads only the batches they sent (by token subject), and an admin reads every batch. Another
+caller's batch gets 404, the same as one that doesn't exist.
+
+| Part | Rule |
+|---|---|
+| `files` (repeated) | 1 to `batch.max-files` (20) files, each up to `file.max-size` (50 MB) and `file.max-pages` (100), and up to `batch.max-total-size` (200 MB) in all |
+| `loanPurpose` | Required; an active code from `GET /loan-purposes` |
+| `async` | Optional, `true` or `false` (default `false`) |
+| `webhookUrl` | Required when `async` is true, and refused otherwise; an absolute `http` or `https` URL (no other checks for the proof of concept) |
+
+The whole batch is checked before anything is stored, and one bad file refuses it all:
+- **400:** a request field. The checks run in the order above, and only the first failure is reported. The detail
+  names the problem, and for the loan purpose it lists the valid codes.
+- **413:** the whole batch is over its size limit.
+- **415, 413 or 422:** a failing file, for an unsupported type, a file over the size limit, or a file that is
+  unreadable (password-protected or corrupt) or over the page limit. The problem's `errors` lists every failing
+  file with its `index`, `fileName`, `status` and `detail`. The status is the first of 415, 413 and 422 that any file
+  failed with.
+
+A real upload with a file over 50 MB is refused while it is being received, so its 413 doesn't name the file.
+
+**What happens to an accepted batch:**
+1. The batch and its files are recorded.
+2. Each original goes to S3 under `{prefix}{fileId}/original.{ext}`. The extension comes from the detected type.
+3. One `SEPARATE_FILE` message is queued per file.
+
+If S3 fails, the batch and its files become `FAILED` ("Storing the files failed"), and the caller hears of it the
+usual way.
+
+**The answer:**
+- **An async batch** gets 202 `{ batchId, status, statusUrl }` straight away. Its webhook follows once it completes
+  (WI-15).
+- **A sync batch** waits up to `wait.timeout` (300 s). It gets 200 with the result if it finishes in time, and 202
+  otherwise, while processing carries on.
+
+The result (also returned by `GET /batches/{id}`):
+
+```json
+{
+  "batchId": "4b0e…", "status": "COMPLETED", "loanPurpose": "CAR_REFINANCE",
+  "receivedAt": "2026-11-20T16:00:00Z", "completedAt": "2026-11-20T16:01:12Z", "error": null,
+  "files": [
+    { "id": "a1…", "index": 0, "fileName": "packet.pdf", "pageCount": 6, "status": "SEPARATED", "documentCount": 3, "error": null }
+  ],
+  "documents": [
+    {
+      "id": "9c1d…", "sourceFileId": "a1…", "pages": { "start": 1, "end": 2 }, "status": "COMPLETED",
+      "documentType": { "name": "Pay stubs", "newType": false },
+      "classification": { "runs": 5, "votes": { "Pay stubs": 4, "W-2 forms": 1 }, "agreement": 0.8, "tieBreak": null },
+      "summary": "Bi-weekly pay stub …", "data": { "employerName": "Acme Corp" }, "truncated": false, "error": null
+    }
+  ]
+}
+```
+
+**Reading the result:**
+- Files are in upload order, and documents are in file order, then page order.
+- `documentType` and `classification` are null until a document is classified, and `summary` and `data` are null
+  until it is extracted.
+- `newType` is true for a type the model created.
+- `tieBreak` is filled in only when the first vote tied. Then it holds that round's `runs`, `votes` and `decidedBy`.
+
+The audit row for an upload records the form fields and, for each file, its name, declared type, size and SHA-256,
+never its bytes. An upload refused for its size is audited with a null payload. `server.tomcat.max-swallow-size`
+follows `batch.max-total-size`, so a client sending an oversized file still gets its 413, rather than a reset
+connection.
+
 ## Reference data API
 
 Every call needs a bearer token. Reads are open to any valid token. Creating, changing or removing reference data

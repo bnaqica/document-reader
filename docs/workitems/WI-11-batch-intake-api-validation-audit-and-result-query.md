@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Not started |
+| **Status** | Built, awaiting developer review |
 | **Depends on** | [WI-02](WI-02-reference-data.md), [WI-03](WI-03-core-records.md), [WI-05](WI-05-inbox-outbox-engine.md), [WI-06](WI-06-notifications-and-wait-mode.md), [WI-07](WI-07-s3-storage-client.md), [WI-08](WI-08-content-detection-and-conversion-to-png.md), [WI-10](WI-10-batch-completion.md) (each committed first) |
 | **Design** | `docs/design/2026-11-20-document-reader-design.md` §6, §7, §16, §18 |
 | **Source** | `docs/superpowers/plans/2026-11-20-document-reader.md`, Task 11 |
@@ -31,7 +31,7 @@ Work on this item alone, and don't start the next one until this one is committe
   - The envelope shape is exactly §7.3: `files[]` ordered by index, and `documents[]` ordered by file index and then page. The public batch status maps `RECEIVED → RECEIVED`, and `PROCESSING → PROCESSING`.
   - When a batch has several file errors, the response status is the first failing file's status (validation order: 400, 415, 413, 422), and every failing file is listed in `errors`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `missingLoanPurposeIs400ListingValidCodes()` and `unknownLoanPurposeIs400()`
   - `noFilesIs400()` and `twentyOneFilesIs400()`
   - `asyncTrueWithoutUrlIs400()`, with the detail exactly "webhookUrl is required when async is true"
@@ -47,8 +47,8 @@ Work on this item alone, and don't start the next one until this one is committe
   - `getOtherCallersBatchIs404()`
   - `resultListsDocumentsInFileThenPageOrder()`
   - `auditPayloadExcludesFileBytes()`: the audit `request_payload` contains `loanPurpose` and each file's name, size and sha256, but no file content.
-- [ ] **Step 2: Run** the tests. Expected: FAIL.
-- [ ] **Step 3: Implement the intake** in the order of §6:
+- [x] **Step 2: Run** the tests. Expected: FAIL.
+- [x] **Step 3: Implement the intake** in the order of §6:
   1. validate the request fields;
   2. for every file, sniff the type, check the size and count pages, collecting all errors before throwing `BatchValidationException`;
   3. transaction 1: create the batch and its source files;
@@ -57,7 +57,7 @@ Work on this item alone, and don't start the next one until this one is committe
   6. if the request is not async, call `await(batchId, wait.timeout)`.
 
   The webhook check only confirms an absolute URL with an `http` or `https` scheme (§7.1). It does no DNS lookups.
-- [ ] **Step 4: Run** the tests and the build. Expected: PASS.
+- [x] **Step 4: Run** the tests and the build. Expected: PASS.
 
 ## Notes from the WI-01 review
 
@@ -70,10 +70,10 @@ The WI-01 code review raised these. Handle each in this work item, test-first.
 
 ## Done when
 
-- [ ] Every step above is ticked.
-- [ ] `./gradlew spotlessApply build` passes, with all tests green.
-- [ ] `git status` shows only the files this work item names, plus their tests and fixtures.
-- [ ] A code review (`superpowers:requesting-code-review`, using the `code-reviewer` agent) has no open findings.
+- [x] Every step above is ticked.
+- [x] `./gradlew spotlessApply build` passes, with all tests green.
+- [x] `git status` shows only the files this work item names, plus their tests and fixtures.
+- [x] A code review (`superpowers:requesting-code-review`, using the `code-reviewer` agent) has no open findings.
 - [ ] The developer has reviewed the diff.
 
 ## Commit

@@ -2,6 +2,11 @@
 # same image runs anywhere; the `local` profile fills them in for local development.
 server:
   port: 8084
+  tomcat:
+    # After refusing an oversized upload, Tomcat reads and discards up to this much of the body so the client gets
+    # its 413. The 2 MB default cuts a 60 MB upload off with a reset connection. Unlimited (-1) would let any client
+    # make the server read without end, so it stops at the largest batch.
+    max-swallow-size: ${app.document-reader.batch.max-total-size}
 
 spring:
   application:

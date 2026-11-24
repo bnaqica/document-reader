@@ -19,7 +19,8 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 
 /**
  * Turns exceptions into {@link ProblemDetail} responses. Add a handler here for each custom exception. A 400 lists
- * the failing fields in an {@code errors} property, mapping each field name to its message.
+ * the failing fields in an {@code errors} property, mapping each field name to its message; a refused batch lists its
+ * failing files there instead, each with its index, file name, status and detail.
  */
 @Slf4j
 @RestControllerAdvice
@@ -53,6 +54,21 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, exception.getMessage());
         problem.setProperty(ERRORS, Map.of("dataSchema", exception.getViolations()));
         return problem;
+    }
+
+    /** A refused batch: its own status and detail, and the failing files in {@code errors} when files failed. */
+    @ExceptionHandler(BatchValidationException.class)
+    ProblemDetail handleBatchValidation(BatchValidationException exception) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(exception.getStatus(), exception.getMessage());
+        if (!exception.getErrors().isEmpty()) {
+            problem.setProperty(ERRORS, exception.getErrors());
+        }
+        return problem;
+    }
+
+    @ExceptionHandler(InvalidWebhookUrlException.class)
+    ProblemDetail handleInvalidWebhookUrl(InvalidWebhookUrlException exception) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, exception.getMessage());
     }
 
     @ExceptionHandler(UnusableNameException.class)
