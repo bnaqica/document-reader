@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Built, awaiting developer review |
+| **Status** | Done |
 | **Depends on** | All of WI-01 to WI-15, each committed first |
 | **Design** | `docs/design/2026-11-20-document-reader-design.md` §20 |
 | **Source** | `docs/superpowers/plans/2026-11-20-document-reader.md`, Task 16 |
@@ -56,7 +56,7 @@ Work on this item alone, and don't start the next one until this one is committe
 - [x] `./gradlew spotlessApply build` passes, with all tests green.
 - [x] `git status` shows only the files this work item names, plus their tests and fixtures.
 - [x] A code review (`superpowers:requesting-code-review`, using the `code-reviewer` agent) has no open findings.
-- [ ] The developer has reviewed the diff.
+- [x] The developer has reviewed the diff.
 
 ## Commit
 
