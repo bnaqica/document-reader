@@ -15,6 +15,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.transaction.IllegalTransactionStateException;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 @DataJpaTest
 @Import({TestcontainersConfiguration.class, SourceFileServiceImpl.class})
@@ -59,6 +62,22 @@ class SourceFileServiceTests {
         assertThat(service.findByBatch(batch))
                 .extracting(SourceFileRecord::originalFilename)
                 .containsExactly("paystub.pdf", "w2.pdf", "bank.pdf");
+    }
+
+    @Test
+    void lockForUpdateReturnsTheFileAsItIsNow() {
+        UUID id = service.createAll(batch(), List.of(file("scan.pdf", 3)))
+                .getFirst()
+                .id();
+
+        assertThat(service.lockForUpdate(id).status()).isEqualTo(SourceFileStatus.RECEIVED);
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void lockForUpdateOutsideATransactionIsRefused() {
+        assertThatThrownBy(() -> service.lockForUpdate(UUID.randomUUID()))
+                .isInstanceOf(IllegalTransactionStateException.class);
     }
 
     @Test

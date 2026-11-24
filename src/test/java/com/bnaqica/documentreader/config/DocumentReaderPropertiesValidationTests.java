@@ -33,6 +33,9 @@ class DocumentReaderPropertiesValidationTests {
         "conversion.max-dimension, 0",
         "separation.runs, 4",
         "separation.window-size, 0",
+        "separation.window-overlap, 0",
+        "separation.window-overlap, 15",
+        "separation.window-overlap, 16",
         "classification.runs, 0",
         "classification.tiebreak-runs, 4",
         "classification.max-pages, 0",
@@ -61,6 +64,14 @@ class DocumentReaderPropertiesValidationTests {
     void startupErrorNamesTheSettingKey(String setting, String value) {
         String key = "app.document-reader." + setting;
         runner.withPropertyValues(key + "=" + value).run(context -> assertStartupFailsNaming(context, key));
+    }
+
+    @Test
+    void acceptsAnOverlapBelowTheWindowSize() {
+        runner.withPropertyValues(
+                        "app.document-reader.separation.window-size=15",
+                        "app.document-reader.separation.window-overlap=14")
+                .run(context -> assertThat(context).hasNotFailed());
     }
 
     @Test

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Not started |
+| **Status** | Built, awaiting developer review |
 | **Depends on** | [WI-03](WI-03-core-records.md), [WI-04](WI-04-run-and-result-records-plus-the-openai-call-log.md), [WI-05](WI-05-inbox-outbox-engine.md), [WI-07](WI-07-s3-storage-client.md), [WI-08](WI-08-content-detection-and-conversion-to-png.md), [WI-09](WI-09-vision-client.md), [WI-10](WI-10-batch-completion.md) (each committed first) |
 | **Design** | `docs/design/2026-11-20-document-reader-design.md` §9 |
 | **Source** | `docs/superpowers/plans/2026-11-20-document-reader.md`, Task 12 |
@@ -29,7 +29,7 @@ Work on this item alone, and don't start the next one until this one is committe
 
 The service implementation also implements `InboxMessageHandler` (WI-05) for its message type: `handle` calls the step, and `onExhausted` runs the failure path. Listeners follow `listener -> @Service to CRUD @Service interface -> ...` (`.claude/rules/service-architecture.md`): the inbox listener calls `InboxProcessingService`, which calls this service, which changes data only through CRUD services.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `majorityOfThreeDecidesEachGap()`: the runs `{1,3}`, `{1,3,5}` and `{1}` over 6 pages give `[1–2, 3–6]`.
   - `pageOneAlwaysStarts()`
   - Review Focus #2: `sanitizeDropsOutOfRangeDuplicatesAndOne()`, where `[0, 3, 3, 9, 2]` with `pageCount=5` becomes `{2, 3}`, and `emptyRunMeansOneDocument()`.
@@ -42,9 +42,9 @@ The service implementation also implements `InboxMessageHandler` (WI-05) for its
   - `exhaustedFailsFileAndRunsCompletionCheck()`: `onExhausted` sets the file to `FAILED` and calls `BatchCompletionService.onFileFailed`.
   - `idempotentWhenDocumentsAlreadyExist()`
   - `lessThanMajorityOfRunsSucceedingThrows()`, so the inbox retries.
-- [ ] **Step 2: Run** the tests. Expected: FAIL.
-- [ ] **Step 3: Implement.** For a gap at page *p*, count the runs (across windows that cover both *p−1* and *p*, keeping the window where *p* is furthest from an edge) whose sanitized set contains *p*. More than half means a boundary. Make the model calls outside a transaction. Then, in one transaction, create the documents, mark the file `SEPARATED` and publish.
-- [ ] **Step 4: Run** the tests and the build. Expected: PASS.
+- [x] **Step 2: Run** the tests. Expected: FAIL.
+- [x] **Step 3: Implement.** For a gap at page *p*, count the runs (across windows that cover both *p−1* and *p*, keeping the window where *p* is furthest from an edge) whose sanitized set contains *p*. More than half means a boundary. Make the model calls outside a transaction. Then, in one transaction, create the documents, mark the file `SEPARATED` and publish.
+- [x] **Step 4: Run** the tests and the build. Expected: PASS.
 
 ## Notes from the WI-01 review
 
@@ -56,10 +56,10 @@ The WI-01 code review raised these. Handle each in this work item, test-first.
 
 ## Done when
 
-- [ ] Every step above is ticked.
-- [ ] `./gradlew spotlessApply build` passes, with all tests green.
-- [ ] `git status` shows only the files this work item names, plus their tests and fixtures.
-- [ ] A code review (`superpowers:requesting-code-review`, using the `code-reviewer` agent) has no open findings.
+- [x] Every step above is ticked.
+- [x] `./gradlew spotlessApply build` passes, with all tests green.
+- [x] `git status` shows only the files this work item names, plus their tests and fixtures.
+- [x] A code review (`superpowers:requesting-code-review`, using the `code-reviewer` agent) has no open findings.
 - [ ] The developer has reviewed the diff.
 
 ## Commit

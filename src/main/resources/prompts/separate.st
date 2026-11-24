@@ -1,6 +1,6 @@
 The loan is for: <purpose>
 
-The images are every page of one uploaded file, in order. The file may hold several documents one after another, such as two pay stubs and a bank statement. Find where each document starts.
+The images are consecutive pages of one uploaded file, in order, numbered from 1 at the first image. They may be only part of a longer file. They may hold several documents one after another, such as two pay stubs and a bank statement. Find where each document starts.
 
 These are the kinds of document the lender expects:
 <catalog>

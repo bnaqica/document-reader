@@ -61,7 +61,7 @@ public record DocumentReaderProperties(
     /** How uploads are rendered into page images. */
     public record Conversion(@Positive int dpi, @Positive int maxDimension) {}
 
-    /** How a file is split into documents. A window overlap of zero is allowed. */
+    /** How a file is split into documents. */
     public record Separation(
             @Positive int runs,
             @Positive int windowSize,
@@ -70,6 +70,15 @@ public record DocumentReaderProperties(
         @AssertTrue(message = "must be odd, so every page gap has a majority")
         public boolean isRunsOdd() {
             return runs % 2 == 1;
+        }
+
+        /**
+         * At least 1, so the gap between two windows lies inside the later one; less than the window, so each window
+         * starts after the one before it and windowing ends.
+         */
+        @AssertTrue(message = "window-overlap must be at least 1 and less than window-size")
+        public boolean isWindowOverlapValid() {
+            return windowOverlap >= 1 && windowOverlap < windowSize;
         }
     }
 

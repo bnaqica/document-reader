@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import javax.imageio.ImageIO;
 import org.junit.jupiter.api.Test;
@@ -27,6 +28,43 @@ class ImageConversionProcessorTests {
 
     static boolean imageMagickCanWriteHeic() {
         return HEIC != null;
+    }
+
+    @Test
+    void forEachPngPageHandsOverPagesInOrder() throws IOException {
+        List<Integer> handedOver = new ArrayList<>();
+
+        processor.forEachPngPage(ConversionFixtures.pdf(3), DetectedType.PDF, page -> {
+            handedOver.add(page.pageNumber());
+            assertThat(page.png()).startsWith((byte) 0x89, (byte) 'P', (byte) 'N', (byte) 'G');
+        });
+
+        assertThat(handedOver).containsExactly(1, 2, 3);
+    }
+
+    @Test
+    void forEachPngPageLetsTheConsumersFailureThrough() {
+        IllegalStateException storeFailed = new IllegalStateException("store failed");
+
+        assertThatThrownBy(() -> processor.forEachPngPage(ConversionFixtures.pdf(2), DetectedType.PDF, page -> {
+                    throw storeFailed;
+                }))
+                .isSameAs(storeFailed);
+        assertThatThrownBy(
+                        () -> processor.forEachPngPage(ConversionFixtures.twoFrameTiff(), DetectedType.TIFF, page -> {
+                            throw storeFailed;
+                        }))
+                .isSameAs(storeFailed);
+    }
+
+    @Test
+    void forEachPngPageHandsOverEveryFrame() {
+        List<Integer> handedOver = new ArrayList<>();
+
+        processor.forEachPngPage(
+                ConversionFixtures.twoFrameTiff(), DetectedType.TIFF, page -> handedOver.add(page.pageNumber()));
+
+        assertThat(handedOver).containsExactly(1, 2);
     }
 
     @Test

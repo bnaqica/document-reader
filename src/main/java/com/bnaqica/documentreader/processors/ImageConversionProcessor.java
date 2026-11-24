@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.function.Consumer;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReadParam;
 import javax.imageio.ImageReader;
@@ -60,35 +61,57 @@ public class ImageConversionProcessor {
      * @throws UnreadableDocumentException for a password-protected, corrupt or oversized file
      */
     public List<ConvertedPage> toPngPages(byte[] bytes, DetectedType type) {
-        long started = System.nanoTime();
-        List<ConvertedPage> pages = switch (type) {
-            case PDF -> pdfPages(bytes);
-            case HEIC -> List.of(heicPage(bytes));
-            default -> imagePages(bytes, type);
-        };
-        log.info(
-                "Converted a {} into {} pages in {} ms",
-                type,
-                pages.size(),
-                Duration.ofNanos(System.nanoTime() - started).toMillis());
+        List<ConvertedPage> pages = new ArrayList<>();
+        forEachPngPage(bytes, type, pages::add);
         return pages;
     }
 
-    private List<ConvertedPage> pdfPages(byte[] bytes) {
+    /**
+     * Like {@link #toPngPages}, but hands each page over as soon as it is rendered, in order, so a caller that stores
+     * each page before the next holds only one in memory. A page the consumer throws on stops the conversion.
+     *
+     * @throws UnreadableDocumentException for a password-protected, corrupt or oversized file
+     */
+    public void forEachPngPage(byte[] bytes, DetectedType type, Consumer<ConvertedPage> each) {
+        long started = System.nanoTime();
+        int[] count = {0};
+        Consumer<ConvertedPage> counted = page -> {
+            try {
+                each.accept(page);
+            } catch (RuntimeException e) {
+                throw new ConsumerFailure(e); // not the file's fault: kept apart from "corrupt"
+            }
+            count[0]++;
+        };
+        try {
+            switch (type) {
+                case PDF -> pdfPages(bytes, counted);
+                case HEIC -> counted.accept(heicPage(bytes));
+                default -> imagePages(bytes, type, counted);
+            }
+        } catch (ConsumerFailure failure) {
+            throw failure.getCause();
+        }
+        log.info(
+                "Converted a {} into {} pages in {} ms",
+                type,
+                count[0],
+                Duration.ofNanos(System.nanoTime() - started).toMillis());
+    }
+
+    private void pdfPages(byte[] bytes, Consumer<ConvertedPage> each) {
         try (PDDocument document = openPdf(bytes)) {
             PDFRenderer renderer = new PDFRenderer(document);
             // embedded images are decoded only as finely as the page needs, so a huge scan can't exhaust memory
             renderer.setSubsamplingAllowed(true);
-            List<ConvertedPage> pages = new ArrayList<>();
             for (int index = 0; index < document.getNumberOfPages(); index++) {
                 float renderDpi = renderDpi(document.getPage(index));
                 BufferedImage rendered = renderer.renderImageWithDPI(index, renderDpi, ImageType.RGB);
-                pages.add(page(index + 1, rendered, ExifOrientation.UPRIGHT));
+                each.accept(page(index + 1, rendered, ExifOrientation.UPRIGHT));
             }
-            return pages;
         } catch (IOException | RuntimeException e) {
-            if (e instanceof UnreadableDocumentException unreadable) {
-                throw unreadable;
+            if (e instanceof UnreadableDocumentException || e instanceof ConsumerFailure) {
+                throw (RuntimeException) e;
             }
             throw new UnreadableDocumentException("PDF is corrupt", e);
         }
@@ -104,24 +127,22 @@ public class ImageConversionProcessor {
         return Math.min(dpi, maxDimension * POINTS_PER_INCH / longestPoints);
     }
 
-    private List<ConvertedPage> imagePages(byte[] bytes, DetectedType type) {
+    private void imagePages(byte[] bytes, DetectedType type, Consumer<ConvertedPage> each) {
         int frames = imageFrameCount(bytes, type); // refuses corrupt and oversized images before decoding
         int orientation = ExifOrientation.read(bytes, type);
         try (ImageInputStream stream = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
             ImageReader reader = reader(stream, type);
             try {
                 reader.setInput(stream);
-                List<ConvertedPage> pages = new ArrayList<>();
                 for (int frame = 0; frame < frames; frame++) {
-                    pages.add(page(frame + 1, reader.read(frame, subsampled(reader, frame)), orientation));
+                    each.accept(page(frame + 1, reader.read(frame, subsampled(reader, frame)), orientation));
                 }
-                return pages;
             } finally {
                 reader.dispose();
             }
         } catch (IOException | RuntimeException e) {
-            if (e instanceof UnreadableDocumentException unreadable) {
-                throw unreadable;
+            if (e instanceof UnreadableDocumentException || e instanceof ConsumerFailure) {
+                throw (RuntimeException) e;
             }
             throw new UnreadableDocumentException(type + " is corrupt", e);
         }
@@ -266,6 +287,19 @@ public class ImageConversionProcessor {
         if (width * height > MAX_PIXELS) {
             throw new UnreadableDocumentException(
                     type + " is " + width + " x " + height + " pixels, more than " + MAX_PIXELS + " pixels");
+        }
+    }
+
+    /** Carries the page consumer's own exception past the catch blocks that report a corrupt file. */
+    private static final class ConsumerFailure extends RuntimeException {
+
+        ConsumerFailure(RuntimeException cause) {
+            super(cause);
+        }
+
+        @Override
+        public synchronized RuntimeException getCause() {
+            return (RuntimeException) super.getCause();
         }
     }
 }

@@ -15,6 +15,15 @@ public interface SourceFileService {
     /** Throws {@code ResourceNotFoundException} for an unknown id. */
     SourceFileRecord get(UUID id);
 
+    /**
+     * Locks the file for the rest of the caller's transaction and returns it as it is now, so a second locker waits
+     * until that transaction ends. Make it the first read of the file in the transaction: a file loaded earlier in it
+     * would come back as it was then.
+     *
+     * @throws org.springframework.transaction.IllegalTransactionStateException outside a transaction
+     */
+    SourceFileRecord lockForUpdate(UUID id);
+
     /** In index order. */
     List<SourceFileRecord> findByBatch(UUID batchId);
 

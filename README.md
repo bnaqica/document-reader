@@ -207,6 +207,31 @@ Workers wake on a signal from the same instance, on a Postgres notification from
 `inbox_ready` and `batch_completed`; it shows in `pg_stat_activity` as `document-reader-listener`, and reconnects with
 backoff if it drops. `app.document-reader.workers.enabled=false` turns the loops and the listener off.
 
+## Separating a file
+
+Each stored file's `SEPARATE_FILE` message splits it into documents:
+
+1. **Conversion.** The file becomes `SEPARATING`. Its pages are converted to PNG one at a time, stored under
+   `{prefix}{fileId}/pages/{nnnn}.png` and recorded. A retry reuses recorded pages.
+2. **A single page** is one document, with no model call.
+3. **Windows and runs.**
+   - A longer file is sent in windows of `separation.window-size` pages (15), each overlapping the one before by
+     `separation.window-overlap` (2). For example, 40 pages are sent as 1–15, 14–28 and 27–40.
+   - Each window gets `separation.runs` separation calls (3, and it must be odd), made at once. Each run is saved as it
+     finishes, and a retry makes only the calls still missing.
+   - A window with fewer than a majority of successful runs fails the attempt, and the inbox retries it.
+4. **The vote.**
+   - Each answer is cleaned: page 1, pages outside the window and duplicates are dropped.
+   - A gap between two pages is a document boundary when more than half of the successful runs of one window start a
+     document there. That window is the one where the gap sits furthest from an edge, or the earlier on a tie.
+   - Page 1 always starts a document.
+5. **Finishing.** One transaction creates the documents (numbered from 1 within the file), marks the file `SEPARATED`,
+   and queues one `CLASSIFY_DOCUMENT` per document.
+
+A file whose message is exhausted becomes `FAILED` ("Separation failed"), and the batch completion check runs, so the
+batch's other files carry on. A message for a file already separated or failed does nothing.
+`separation.window-overlap` must be at least 1 and less than `separation.window-size`, or the service won't start.
+
 ## Completing a batch
 
 Every step that finishes a document (completed or failed) or fails a file runs the completion check in its own

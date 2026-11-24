@@ -12,6 +12,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
@@ -50,6 +51,13 @@ public class SourceFileServiceImpl implements SourceFileService {
     @Override
     public SourceFileRecord get(UUID id) {
         return toRecord(find(id));
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public SourceFileRecord lockForUpdate(UUID id) {
+        return toRecord(
+                repository.findByIdForUpdate(id).orElseThrow(() -> new ResourceNotFoundException(RESOURCE, id)));
     }
 
     @Override
