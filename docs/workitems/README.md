@@ -42,7 +42,7 @@ Listeners follow `listener -> @Service to CRUD @Service interface -> ...` (`.cla
 | WI-12 | [Separation (process 1, per file)](WI-12-separation.md) | WI-03, WI-04, WI-05, WI-07, WI-08, WI-09, WI-10 | Done |
 | WI-13 | [Catalog resolution and classification (process 2)](WI-13-catalog-resolution-and-classification.md) | WI-02, WI-03, WI-04, WI-05, WI-09, WI-10 | Done |
 | WI-14 | [Extraction (process 3)](WI-14-extraction.md) | WI-02, WI-03, WI-04, WI-05, WI-09, WI-10 | Done |
-| WI-15 | [Webhook delivery (process 4)](WI-15-webhook-delivery.md) | WI-03, WI-04, WI-05, WI-10, WI-11 | Built, awaiting developer review |
+| WI-15 | [Webhook delivery (process 4)](WI-15-webhook-delivery.md) | WI-03, WI-04, WI-05, WI-10, WI-11 | Done |
 | WI-16 | [End-to-end pipeline and golden-document harness](WI-16-end-to-end-pipeline-and-golden-document-harness.md) | All of WI-01 to WI-15 | Not started |
 
 WI-02, WI-03, WI-05, WI-07 and WI-08 depend only on WI-01, so after WI-01 they can be done in any order. The table
