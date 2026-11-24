@@ -288,6 +288,25 @@ A document longer than `extraction.max-pages` (20) is sent only that many of its
 - A message for a document already completed or failed does nothing.
 - Extracted values, summaries and validation messages are never logged.
 
+## Delivering a webhook
+
+When an async batch completes, with any final status, its one `DELIVER_WEBHOOK` message posts the batch's result to
+its `webhookUrl`:
+- **The request.** The body is the same JSON that `GET /batches/{id}` returns. It carries two headers:
+  `X-Document-Reader-Batch` (the batch id) and `X-Document-Reader-Delivery` (the delivery id, the same on every retry,
+  for de-duplication).
+- **Success.** Any 2xx response marks the webhook `DELIVERED`.
+- **Failure.** Anything else is retried with the inbox backoff, up to `webhook.max-attempts` attempts (8). That covers
+  another status, a redirect (never followed), no answer within `webhook.timeout` (10 s), or a refused connection.
+- **Attempts.** Every attempt is recorded, with its number, status and a short error, and can be read at
+  `GET /records/batches/{id}/webhook-attempts`. Response bodies are never stored, and the URL, body and response are
+  never logged.
+- **Giving up.** After the last failed attempt, the webhook becomes `FAILED`. The batch keeps its status and result,
+  and its owner can still read it with `GET /batches/{id}`.
+
+**Proof of concept only.** Webhooks are unsigned, and any absolute http or https URL is accepted, including internal
+addresses (no SSRF protection). Both must be added before the service handles real data (design §22).
+
 ## Completing a batch
 
 Every step that finishes a document (completed or failed) or fails a file runs the completion check in its own
