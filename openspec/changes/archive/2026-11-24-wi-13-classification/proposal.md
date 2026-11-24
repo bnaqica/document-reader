@@ -56,8 +56,8 @@ This is WI-13 of `docs/workitems/`.
 
 - `document-type-catalog`: a new requirement, that a type name the model proposes is either confirmed as an alias of
   an existing type or added once as a `MODEL` type with a drafted schema, even when two documents propose it at once.
-- `batch-results`: "A document shows its type and votes once classified" gains how votes for a name that wasn't in the
-  catalog are counted.
+- `batch-results`: a new requirement, that votes for a name that wasn't in the catalog are counted under the type it
+  resolves to now, or under the name. The existing votes requirement is unchanged.
 
 ## Impact
 
