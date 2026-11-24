@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Built, awaiting developer review |
+| **Status** | Done |
 | **Depends on** | [WI-02](WI-02-reference-data.md), [WI-03](WI-03-core-records.md), [WI-04](WI-04-run-and-result-records-plus-the-openai-call-log.md), [WI-05](WI-05-inbox-outbox-engine.md), [WI-09](WI-09-vision-client.md), [WI-10](WI-10-batch-completion.md) (each committed first) |
 | **Design** | `docs/design/2026-11-20-document-reader-design.md` §12 |
 | **Source** | `docs/superpowers/plans/2026-11-20-document-reader.md`, Task 14 (the extraction half) |
@@ -47,7 +47,7 @@ The service implementation also implements `InboxMessageHandler` (WI-05) for its
 - [x] `./gradlew spotlessApply build` passes, with all tests green.
 - [x] `git status` shows only the files this work item names, plus their tests and fixtures.
 - [x] A code review (`superpowers:requesting-code-review`, using the `code-reviewer` agent) has no open findings.
-- [ ] The developer has reviewed the diff.
+- [x] The developer has reviewed the diff.
 
 ## Commit
 
