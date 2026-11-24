@@ -85,6 +85,18 @@ class DocumentServiceTests {
     }
 
     @Test
+    void markTruncatedSetsTheFlag() {
+        UUID id = service.createAll(file0, List.of(new PageRange(1, 2)))
+                .getFirst()
+                .id();
+        assertThat(service.get(id).truncated()).isFalse();
+
+        service.markTruncated(id);
+
+        assertThat(service.get(id).truncated()).isTrue();
+    }
+
+    @Test
     void lockForUpdateReturnsTheDocumentAsItIsNow() {
         UUID id = service.createAll(file0, List.of(new PageRange(1, 2)))
                 .getFirst()

@@ -39,4 +39,7 @@ public interface DocumentService {
 
     /** Throws {@code ResourceNotFoundException} for an unknown document or document type. */
     void assignType(UUID id, UUID documentTypeId);
+
+    /** Records that extraction read only the document's first {@code extraction.max-pages} pages. */
+    void markTruncated(UUID id);
 }

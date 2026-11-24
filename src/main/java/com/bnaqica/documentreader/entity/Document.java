@@ -69,6 +69,11 @@ public class Document {
         this.completedAt = status.isFinished() ? now : null;
     }
 
+    /** Extraction read only the first pages. */
+    public void markTruncated() {
+        this.truncated = true;
+    }
+
     public void assignType(UUID documentTypeId) {
         this.documentTypeId = documentTypeId;
     }

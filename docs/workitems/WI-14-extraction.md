@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Not started |
+| **Status** | Built, awaiting developer review |
 | **Depends on** | [WI-02](WI-02-reference-data.md), [WI-03](WI-03-core-records.md), [WI-04](WI-04-run-and-result-records-plus-the-openai-call-log.md), [WI-05](WI-05-inbox-outbox-engine.md), [WI-09](WI-09-vision-client.md), [WI-10](WI-10-batch-completion.md) (each committed first) |
 | **Design** | `docs/design/2026-11-20-document-reader-design.md` §12 |
 | **Source** | `docs/superpowers/plans/2026-11-20-document-reader.md`, Task 14 (the extraction half) |
@@ -26,7 +26,7 @@ Work on this item alone, and don't start the next one until this one is committe
 
 The service implementation also implements `InboxMessageHandler` (WI-05) for its message type: `handle` calls the step, and `onExhausted` runs the failure path. Listeners follow `listener -> @Service to CRUD @Service interface -> ...` (`.claude/rules/service-architecture.md`): the inbox listener calls `InboxProcessingService`, which calls this service, which changes data only through CRUD services.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `completedDocumentRunsCompletionCheck()`: after the final stage, `BatchCompletionService.onDocumentFinished` is called once, inside the same transaction that saves the result.
   - `exhaustedFailsDocumentAndRunsCompletionCheck()`
   - `threeInitialPassesThenConsolidateThenFinal()`: `extraction_run` rows are 3 `INITIAL`, 1 `CONSOLIDATED` and 1 `FINAL`, in that order.
@@ -35,18 +35,18 @@ The service implementation also implements `InboxMessageHandler` (WI-05) for its
   - `invalidTwiceThrows()`
   - `longDocumentTruncatedAt20Pages()`: 25 pages means 20 are sent and `truncated=true`.
   - `idempotentWhenResultExists()`
-- [ ] **Step 2: Run** the tests. Expected: FAIL.
-- [ ] **Step 3: Implement** §12. Make the model calls outside a transaction. In the final transaction, save `extraction_result`, set the document `COMPLETED` and call `onDocumentFinished`.
-- [ ] **Step 4: Run** the tests and the build. Expected: PASS.
+- [x] **Step 2: Run** the tests. Expected: FAIL.
+- [x] **Step 3: Implement** §12. Make the model calls outside a transaction. In the final transaction, save `extraction_result`, set the document `COMPLETED` and call `onDocumentFinished`.
+- [x] **Step 4: Run** the tests and the build. Expected: PASS.
 
 ---
 
 ## Done when
 
-- [ ] Every step above is ticked.
-- [ ] `./gradlew spotlessApply build` passes, with all tests green.
-- [ ] `git status` shows only the files this work item names, plus their tests and fixtures.
-- [ ] A code review (`superpowers:requesting-code-review`, using the `code-reviewer` agent) has no open findings.
+- [x] Every step above is ticked.
+- [x] `./gradlew spotlessApply build` passes, with all tests green.
+- [x] `git status` shows only the files this work item names, plus their tests and fixtures.
+- [x] A code review (`superpowers:requesting-code-review`, using the `code-reviewer` agent) has no open findings.
 - [ ] The developer has reviewed the diff.
 
 ## Commit

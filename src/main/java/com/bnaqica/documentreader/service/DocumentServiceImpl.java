@@ -124,6 +124,13 @@ public class DocumentServiceImpl implements DocumentService {
         }
     }
 
+    @Override
+    @Transactional
+    public void markTruncated(UUID id) {
+        find(id).markTruncated();
+        log.info("Document {} is truncated", id);
+    }
+
     private Document find(UUID id) {
         return repository.findById(id).orElseThrow(() -> new ResourceNotFoundException(RESOURCE, id));
     }

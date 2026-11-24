@@ -263,6 +263,31 @@ Each document's `CLASSIFY_DOCUMENT` message decides its type:
 A document whose message is exhausted becomes `FAILED` ("Classification failed"), and the batch completion check runs.
 A message for a document that is already classified, further along or failed does nothing.
 
+## Extracting a document
+
+Each classified document's `EXTRACT_DOCUMENT` message reads its data and summary in three stages. Each stage gets the
+loan purpose and the type's data schema.
+
+1. **First passes.**
+   - The document becomes `EXTRACTING`, and `extraction.passes` (3) calls read its pages.
+   - Each pass is saved as an `INITIAL` run as it finishes, and a retry makes only the passes still missing.
+2. **Consolidation.** One text-only call merges the passes into a draft and lists where they disagreed. The draft is
+   saved as `CONSOLIDATED`.
+3. **Final determination.** One call, with the pages and the draft, settles the disagreements.
+   - Its data must validate against the type's schema. If it doesn't, the call is repeated once with the validation
+     errors, and a second failure makes the inbox retry the message.
+   - The valid answer is saved as `FINAL`.
+
+A document longer than `extraction.max-pages` (20) is sent only that many of its first pages, and is marked
+`truncated`.
+
+**Finishing:**
+- One transaction saves the result (type, schema version, data and summary), sets the document to `COMPLETED`, and
+  runs the batch completion check.
+- A document whose message is exhausted becomes `FAILED` ("Extraction failed"), and the check runs too.
+- A message for a document already completed or failed does nothing.
+- Extracted values, summaries and validation messages are never logged.
+
 ## Completing a batch
 
 Every step that finishes a document (completed or failed) or fails a file runs the completion check in its own
