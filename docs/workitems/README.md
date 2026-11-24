@@ -39,7 +39,7 @@ Listeners follow `listener -> @Service to CRUD @Service interface -> ...` (`.cla
 | WI-09 | [Vision client (Spring AI)](WI-09-vision-client.md) | WI-04, WI-07 | Done |
 | WI-10 | [Batch completion](WI-10-batch-completion.md) | WI-03, WI-05, WI-06 | Done |
 | WI-11 | [Batch intake API, validation, audit and result query](WI-11-batch-intake-api-validation-audit-and-result-query.md) | WI-02, WI-03, WI-05, WI-06, WI-07, WI-08, WI-10 | Done |
-| WI-12 | [Separation (process 1, per file)](WI-12-separation.md) | WI-03, WI-04, WI-05, WI-07, WI-08, WI-09, WI-10 | Built, awaiting developer review |
+| WI-12 | [Separation (process 1, per file)](WI-12-separation.md) | WI-03, WI-04, WI-05, WI-07, WI-08, WI-09, WI-10 | Done |
 | WI-13 | [Catalog resolution and classification (process 2)](WI-13-catalog-resolution-and-classification.md) | WI-02, WI-03, WI-04, WI-05, WI-09, WI-10 | Not started |
 | WI-14 | [Extraction (process 3)](WI-14-extraction.md) | WI-02, WI-03, WI-04, WI-05, WI-09, WI-10 | Not started |
 | WI-15 | [Webhook delivery (process 4)](WI-15-webhook-delivery.md) | WI-03, WI-04, WI-05, WI-10, WI-11 | Not started |
